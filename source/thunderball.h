@@ -1,6 +1,7 @@
 #pragma once 
 
-class RenderDevice;
+struct RenderDevice;
+struct Mesh;
 
 class ThunderBallApp : public Application
 {
@@ -14,4 +15,7 @@ public:
 
 protected:
 	RenderDevice *m_pRenderDevice;
+	Mesh *m_meshes;
+
+	uint32_t m_numMeshes;
 };

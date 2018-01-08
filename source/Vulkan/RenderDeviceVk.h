@@ -1,8 +1,7 @@
 #pragma once 
 
-class RenderDevice
+struct RenderDevice
 {
-public:
 	RenderDevice();
 	~RenderDevice();
 
@@ -11,7 +10,6 @@ public:
 	void update();
 	void render();
 
-protected:
 	void createInstance();
 	void createSurface(GLFWwindow *window);
 	void createDevice();
