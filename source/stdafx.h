@@ -9,6 +9,11 @@
 
 #pragma hdrstop
 
+#if defined(WIN32)
+#include <Windows.h>
+#define WIN32_LEAN_AND_MEAN             // Exclude rarely-used stuff from Windows headers
+#endif
+
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
@@ -16,3 +21,4 @@
 #include <string>
 
 #include "Framework/Application.h"
+#include "Framework/System.h"

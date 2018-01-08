@@ -38,9 +38,9 @@ struct UniformBufferData
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objType, uint64_t obj, size_t location, int32_t code, const char* layerPrefix, const char* msg, void* userData)
 {
 	if (flags & VK_DEBUG_REPORT_ERROR_BIT_EXT)
-		fprintf(stderr, "ERROR: validation layer: %s\n", msg);
+		print("ERROR: validation layer: %s\n", msg);
 	else
-		fprintf(stderr, "WARNING: validation layer: %s\n", msg);
+		print("WARNING: validation layer: %s\n", msg);
 	return VK_FALSE;
 }
 
@@ -178,7 +178,7 @@ void RenderDevice::render()
 
 	if (res != VK_SUCCESS && res != VK_SUBOPTIMAL_KHR) 
 	{
-		fprintf(stderr, "failed to acquire image\n");
+		print("failed to acquire image\n");
 //		exit(EXIT_FAILURE);
 	}
 
@@ -202,18 +202,18 @@ void RenderDevice::render()
 	fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 	if (vkCreateFence(m_vkDevice, &fenceCreateInfo, nullptr, &fence) != VK_SUCCESS)
 	{
-		fprintf(stderr, "failed to create fence.\n");
+		print("failed to create fence.\n");
 	}
 	res = vkQueueSubmit(m_vkPresentQueue, 1, &submitInfo, fence);
 	if (res != VK_SUCCESS)
 	{
-		fprintf(stderr, "failed to submit draw command buffer\n");
+		print("failed to submit draw command buffer\n");
 //		exit(EXIT_FAILURE);
 	}
 
 	if (vkWaitForFences(m_vkDevice, 1, &fence, VK_TRUE, kDefaultFenceTimeout) != VK_SUCCESS)
 	{
-		fprintf(stderr, "failed to wait on fence.\n");
+		print("failed to wait on fence.\n");
 	}
 
 	vkDestroyFence(m_vkDevice, fence, nullptr);
@@ -231,7 +231,7 @@ void RenderDevice::render()
 
 	if (res != VK_SUCCESS) 
 	{
-		fprintf(stderr, "failed to submit present command buffer\n");
+		print("failed to submit present command buffer\n");
 //		exit(EXIT_FAILURE);
 	}
 }
@@ -297,12 +297,12 @@ void RenderDevice::createInstance()
 
 	if (res == VK_ERROR_INCOMPATIBLE_DRIVER)
 	{
-		printf("cannot find a compatible Vulkan ICD\n");
+		print("cannot find a compatible Vulkan ICD\n");
 		exit(-1);
 	}
 	else if (res)
 	{
-		printf("unknown error\n");
+		print("unknown error\n");
 		exit(-1);
 	}
 
@@ -317,17 +317,17 @@ void RenderDevice::createInstance()
 
 		if (CreateDebugReportCallback(m_vkInstance, &createInfo, nullptr, &m_vkDebugReportCallback) != VK_SUCCESS)
 		{
-			fprintf(stderr, "failed to create debug callback\n");
+			print("failed to create debug callback\n");
 			exit(1);
 		}
 		else
 		{
-			fprintf(stdout, "created debug callback\n");
+			print("created debug callback\n");
 		}
 	}
 	else 
 	{
-		fprintf(stdout, "skipped creating debug callback\n");
+		print("skipped creating debug callback\n");
 	}
 }
 
@@ -336,7 +336,7 @@ void RenderDevice::createSurface(GLFWwindow *window)
 	VkResult err = glfwCreateWindowSurface(m_vkInstance, window, nullptr, &m_vkSurface);
 	if (err)
 	{
-		printf("window surface creation failed.\n");
+		print("window surface creation failed.\n");
 		exit(-1);
 	}
 }
@@ -361,7 +361,7 @@ void RenderDevice::createDevice()
 		vkGetPhysicalDeviceFeatures(m_vkPhysicalDevices[i], &m_vkPhysicalDeviceFeatures[i]);
 	}
 
-	printf("Selected Device: %s\n", m_vkPhysicalDeviceProperties[m_selectedDevice].deviceName);
+	print("Selected Device: %s\n", m_vkPhysicalDeviceProperties[m_selectedDevice].deviceName);
 
 	vkGetPhysicalDeviceQueueFamilyProperties(m_vkPhysicalDevices[m_selectedDevice], &m_vkQueueFamilyPropertiesCount, nullptr);
 	m_vkQueueFamilyProperties = new VkQueueFamilyProperties [m_vkQueueFamilyPropertiesCount];
@@ -397,21 +397,21 @@ void RenderDevice::createDevice()
 
 	if (foundGraphicsQueueFamily)
 	{
-		fprintf(stdout, "queue family #%d supports graphics\n", m_vkGraphicsQueueFamilyIndex);
+		print("queue family #%d supports graphics\n", m_vkGraphicsQueueFamilyIndex);
 
 		if (foundPresentQueueFamily)
 		{
-			fprintf(stdout, "queue family #%d supports presentation\n", m_vkPresentQueueFamilyIndex);
+			print("queue family #%d supports presentation\n", m_vkPresentQueueFamilyIndex);
 		}
 		else
 		{
-			fprintf(stderr, "could not find a valid queue family with present support\n");
+			print("could not find a valid queue family with present support\n");
 			exit(EXIT_FAILURE);
 		}
 	}
 	else
 	{
-		fprintf(stderr, "could not find a valid queue family with graphics support\n");
+		print("could not find a valid queue family with graphics support\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -450,7 +450,7 @@ void RenderDevice::createDevice()
 
 	vkGetDeviceQueue(m_vkDevice, m_vkGraphicsQueueFamilyIndex, 0, &m_vkGraphicsQueue);
 	vkGetDeviceQueue(m_vkDevice, m_vkPresentQueueFamilyIndex, 0, &m_vkPresentQueue);
-	fprintf(stdout, "acquired graphics and presentation queues\n");
+	print("acquired graphics and presentation queues\n");
 }
 
 void RenderDevice::createSemaphores() 
@@ -461,12 +461,12 @@ void RenderDevice::createSemaphores()
 	if (vkCreateSemaphore(m_vkDevice, &createInfo, nullptr, &m_vkImageAvailableSemaphore) != VK_SUCCESS ||
 		vkCreateSemaphore(m_vkDevice, &createInfo, nullptr, &m_vkRenderingFinishedSemaphore) != VK_SUCCESS)
 	{
-		fprintf(stderr, "failed to create semaphores\n");
+		print("failed to create semaphores\n");
 		exit(EXIT_FAILURE);
 	}
 	else 
 	{
-		fprintf(stdout, "created semaphores\n");
+		print("created semaphores\n");
 	}
 }
 
@@ -479,7 +479,7 @@ void RenderDevice::createCommandPool()
 
 	if (vkCreateCommandPool(m_vkDevice, &commandPoolCreateInfo, nullptr, &m_vkCommandPool) != VK_SUCCESS)
 	{
-		fprintf(stderr, "failed to create command pool\n");
+		print("failed to create command pool\n");
 		exit(EXIT_FAILURE);
 	}
 }
@@ -509,7 +509,7 @@ void RenderDevice::createDepthBuffer()
 
 	if (vkCreateImage(m_vkDevice, &imageCreateInfo, nullptr, &m_vkDepthBufferImage) != VK_SUCCESS)
 	{
-		fprintf(stderr, "failed to create image for depth buffer\n");
+		print("failed to create image for depth buffer\n");
 		exit(1);
 	}
 
@@ -523,13 +523,13 @@ void RenderDevice::createDepthBuffer()
 
 	if (vkAllocateMemory(m_vkDevice, &allocInfo, nullptr, &m_vkDepthBufferMemory) != VK_SUCCESS)
 	{
-		fprintf(stderr, "failed to allocate memory for image\n");
+		print("failed to allocate memory for image\n");
 		exit(1);
 	}
 
 	if (vkBindImageMemory(m_vkDevice, m_vkDepthBufferImage, m_vkDepthBufferMemory, 0) != VK_SUCCESS)
 	{
-		fprintf(stderr, "failed to bind memory to image\n");
+		print("failed to bind memory to image\n");
 		exit(1);
 	}
 
@@ -547,7 +547,7 @@ void RenderDevice::createDepthBuffer()
 	viewInfo.subresourceRange = subresourceRange;
 	if (vkCreateImageView(m_vkDevice, &viewInfo, nullptr, &m_vkDepthBufferView) != VK_SUCCESS)
 	{
-		fprintf(stderr, "failed to create image view\n");
+		print("failed to create image view\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -658,7 +658,7 @@ void RenderDevice::createVertexBuffer()
 	vkDestroyBuffer(m_vkDevice, stagingBuffers.indices.buffer, nullptr);
 	vkFreeMemory(m_vkDevice, stagingBuffers.indices.memory, nullptr);
 
-	fprintf(stdout, "set up vertex and index buffers\n");
+	print("set up vertex and index buffers\n");
 
 	m_vkVertexBindingDescription.binding = 0;
 	m_vkVertexBindingDescription.stride = sizeof(Vertex);
@@ -756,7 +756,7 @@ void RenderDevice::createSwapChain()
 	m_vkSwapChainImages = new VkImage [m_vkSwapChainImageCount];
 	if (vkGetSwapchainImagesKHR(m_vkDevice, m_vkSwapChain, &m_vkSwapChainImageCount, m_vkSwapChainImages) != VK_SUCCESS) 
 	{
-		fprintf(stderr, "failed to acquire swap chain images\n");
+		print("failed to acquire swap chain images\n");
 		exit(EXIT_FAILURE);
 	}
 }
@@ -809,12 +809,12 @@ void RenderDevice::createRenderPass()
 
 	if (vkCreateRenderPass(m_vkDevice, &createInfo, nullptr, &m_vkRenderPass) != VK_SUCCESS)
 	{
-		fprintf(stderr, "failed to create render pass\n");
+		print("failed to create render pass\n");
 		exit(1);
 	}
 	else
 	{
-		fprintf(stdout, "created render pass\n");
+		print("created render pass\n");
 	}
 }
 
@@ -843,12 +843,12 @@ void RenderDevice::createFramebuffers()
 
 		if (vkCreateImageView(m_vkDevice, &createInfo, nullptr, &m_vkSwapChainImageViews[i]) != VK_SUCCESS)
 		{
-			fprintf(stderr, "failed to create image view for swap chain image #%zd\n", i);
+			print("failed to create image view for swap chain image #%zd\n", i);
 			exit(1);
 		}
 	}
 
-	fprintf(stdout, "created image views for swap chain images\n");;
+	print("created image views for swap chain images\n");;
 
 	for (size_t i = 0; i < m_vkSwapChainImageCount; i++)
 	{
@@ -865,12 +865,12 @@ void RenderDevice::createFramebuffers()
 
 		if (vkCreateFramebuffer(m_vkDevice, &createInfo, nullptr, &m_vkSwapChainFramebuffers[i]) != VK_SUCCESS)
 		{
-			fprintf(stderr, "failed to create framebuffer for swap chain image view #%zd\n", i);
+			print("failed to create framebuffer for swap chain image view #%zd\n", i);
 			exit(1);
 		}
 	}
 
-	fprintf(stdout, "created framebuffers for swap chain image views.\n");
+	print("created framebuffers for swap chain image views.\n");
 }
 
 void RenderDevice::createGraphicsPipeline()
@@ -995,12 +995,12 @@ void RenderDevice::createGraphicsPipeline()
 
 	if (vkCreateDescriptorSetLayout(m_vkDevice, &descriptorLayoutCreateInfo, nullptr, &m_vkDescriptorSetLayout) != VK_SUCCESS)
 	{
-		fprintf(stderr, "failed to create descriptor layout\n");
+		print("failed to create descriptor layout\n");
 		exit(1);
 	}
 	else
 	{
-		fprintf(stdout, "created descriptor layout\n");
+		print("created descriptor layout\n");
 	}
 
 	VkPipelineLayoutCreateInfo layoutCreateInfo = {};
@@ -1010,12 +1010,12 @@ void RenderDevice::createGraphicsPipeline()
 
 	if (vkCreatePipelineLayout(m_vkDevice, &layoutCreateInfo, nullptr, &m_vkPipelineLayout) != VK_SUCCESS)
 	{
-		fprintf(stderr, "failed to create pipeline layout\n");
+		print("failed to create pipeline layout\n");
 		exit(1);
 	}
 	else
 	{
-		fprintf(stdout, "created pipeline layout\n");
+		print("created pipeline layout\n");
 	}
 
 	VkGraphicsPipelineCreateInfo pipelineCreateInfo = {};
@@ -1037,12 +1037,12 @@ void RenderDevice::createGraphicsPipeline()
 
 	if (vkCreateGraphicsPipelines(m_vkDevice, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &m_vkGraphicsPipeline) != VK_SUCCESS)
 	{
-		fprintf(stderr, "failed to create graphics pipeline\n");
+		print("failed to create graphics pipeline\n");
 		exit(1);
 	}
 	else
 	{
-		fprintf(stdout, "created graphics pipeline\n");
+		print("created graphics pipeline\n");
 	}
 
 	vkDestroyShaderModule(m_vkDevice, vertexShaderModule, nullptr);
@@ -1065,12 +1065,12 @@ void RenderDevice::createDescriptorSet()
 
 	if (vkCreateDescriptorPool(m_vkDevice, &createInfo, nullptr, &m_vkDescriptorPool) != VK_SUCCESS)
 	{
-		fprintf(stderr, "failed to create descriptor pool\n");
+		print("failed to create descriptor pool\n");
 		exit(1);
 	}
 	else
 	{
-		fprintf(stdout, "created descriptor pool\n");
+		print("created descriptor pool\n");
 	}
 
 	// There needs to be one descriptor set per binding point in the shader
@@ -1082,12 +1082,12 @@ void RenderDevice::createDescriptorSet()
 
 	if (vkAllocateDescriptorSets(m_vkDevice, &allocInfo, &m_vkDescriptorSet) != VK_SUCCESS)
 	{
-		fprintf(stderr, "failed to create descriptor set\n");
+		print("failed to create descriptor set\n");
 		exit(1);
 	}
 	else
 	{
-		fprintf(stdout, "created descriptor set\n");
+		print("created descriptor set\n");
 	}
 
 	// Update descriptor set with uniform binding
@@ -1133,7 +1133,7 @@ void RenderDevice::createCommandBuffers()
 	m_vkCommandBuffers = new VkCommandBuffer[m_vkSwapChainImageCount];
 	if (vkAllocateCommandBuffers(m_vkDevice, &commandBufferAllocateInfo, m_vkCommandBuffers) != VK_SUCCESS)
 	{
-		fprintf(stderr, "failed to create command buffers\n");
+		print("failed to create command buffers\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -1228,12 +1228,12 @@ void RenderDevice::createCommandBuffers()
 
 		if (vkEndCommandBuffer(m_vkCommandBuffers[i]) != VK_SUCCESS) 
 		{
-			fprintf(stderr, "failed to record command buffer\n");
+			print("failed to record command buffer\n");
 			exit(EXIT_FAILURE);
 		}
 	}
 
-	fprintf(stdout, "recorded command buffers\n");
+	print("recorded command buffers\n");
 
 	vkDestroyPipelineLayout(m_vkDevice, m_vkPipelineLayout, nullptr);
 }
@@ -1252,13 +1252,13 @@ VkBool32 RenderDevice::getMemoryType(uint32_t typeBits, VkMemoryPropertyFlags  p
 			if ((type.propertyFlags & properties) == properties)
 			{
 				*typeIndex = i;
-				printf("typeBits: 0x%x, properties: 0x%x, typeIndex = %d\n", typeBits, properties, *typeIndex);
+				print("typeBits: 0x%x, properties: 0x%x, typeIndex = %d\n", typeBits, properties, *typeIndex);
 				return true;
 			}
 		}
 //		typeBits >>= 1;
 	}
-	fprintf(stderr, "Could not find memory type to satisfy requirements\n");
+	print("Could not find memory type to satisfy requirements\n");
 	return false;
 }
 
@@ -1282,11 +1282,11 @@ VkShaderModule RenderDevice::createShaderModule(const char *filename)
 	VkShaderModule shaderModule;
 	if (vkCreateShaderModule(m_vkDevice, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
 	{
-		fprintf(stderr, "failed to create shader module for %s\n", filename);
+		print("failed to create shader module for %s\n", filename);
 		exit(1);
 	}
 
-	fprintf(stdout, "created shader module for %s\n", filename);
+	print("created shader module for %s\n", filename);
 
 	return shaderModule;
 }
@@ -1320,7 +1320,7 @@ void RenderDevice::createTexture(const char *filename)
 	const char *ptr = (const char *)buffer;
 	if (strncmp(ptr, "DDS ", 4) != 0)
 	{
-		fprintf(stdout, "File is not in .dds format.\n");
+		print("File is not in .dds format.\n");
 	}
 
 	uint8_t *header = buffer + 4;
@@ -1366,7 +1366,7 @@ void RenderDevice::createTexture(const char *filename)
 
 	if (vkCreateBuffer(m_vkDevice, &bufferCreateInfo, nullptr, &stagingBuffer) != VK_SUCCESS)
 	{
-		fprintf(stderr, "failed to create staging buffer for %s\n", filename);
+		print("failed to create staging buffer for %s\n", filename);
 		exit(1);
 	}
 
@@ -1383,13 +1383,13 @@ void RenderDevice::createTexture(const char *filename)
 
 	if (vkAllocateMemory(m_vkDevice, &allocInfo, nullptr, &stagingBufferMemory) != VK_SUCCESS)
 	{
-		fprintf(stderr, "failed to allocate memory for staging image\n");
+		print("failed to allocate memory for staging image\n");
 		exit(1);
 	}
 
 	if (vkBindBufferMemory(m_vkDevice, stagingBuffer, stagingBufferMemory, 0) != VK_SUCCESS)
 	{
-		fprintf(stderr, "failed to bind memory to staging buffer %s\n", filename);
+		print("failed to bind memory to staging buffer %s\n", filename);
 		exit(1);
 	}
 	
@@ -1447,7 +1447,7 @@ void RenderDevice::createTexture(const char *filename)
 	imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	if (vkCreateImage(m_vkDevice, &imageCreateInfo, nullptr, &m_vkTextureImage) != VK_SUCCESS)
 	{
-		fprintf(stderr, "failed to create image for %s\n", filename);
+		print("failed to create image for %s\n", filename);
 		exit(1);
 	}
 
@@ -1460,13 +1460,13 @@ void RenderDevice::createTexture(const char *filename)
 
 	if (vkAllocateMemory(m_vkDevice, &dstAllocInfo, nullptr, &m_vkTextureImageMemory) != VK_SUCCESS)
 	{
-		fprintf(stderr, "failed to allocate memory for image\n");
+		print("failed to allocate memory for image\n");
 		exit(1);
 	}
 
 	if (vkBindImageMemory(m_vkDevice, m_vkTextureImage, m_vkTextureImageMemory, 0) != VK_SUCCESS)
 	{
-		fprintf(stderr, "failed to bind memory to image\n");
+		print("failed to bind memory to image\n");
 		exit(1);
 	}
 
@@ -1496,7 +1496,7 @@ void RenderDevice::createTexture(const char *filename)
 	viewInfo.subresourceRange = subresourceRange;
 	if (vkCreateImageView(m_vkDevice, &viewInfo, nullptr, &m_vkTextureImageView) != VK_SUCCESS)
 	{
-		fprintf(stderr, "failed to create image view\n");
+		print("failed to create image view\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -1519,7 +1519,7 @@ void RenderDevice::createTexture(const char *filename)
 	samplerInfo.compareOp = VK_COMPARE_OP_NEVER;
 	if (vkCreateSampler(m_vkDevice, &samplerInfo, nullptr, &m_vkSampler) != VK_SUCCESS)
 	{
-		fprintf(stderr, "failed to create sampler.\n");
+		print("failed to create sampler.\n");
 		exit(EXIT_FAILURE);
 	}
 }
@@ -1553,7 +1553,7 @@ void RenderDevice::endSingleUseCommandBuffer(VkCommandBuffer commandBuffer)
 	fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 	if (vkCreateFence(m_vkDevice, &fenceCreateInfo, nullptr, &fence) != VK_SUCCESS)
 	{
-		fprintf(stderr, "failed to create fence.\n");
+		print("failed to create fence.\n");
 	}
 
 	VkSubmitInfo submitInfo = {};
@@ -1563,12 +1563,12 @@ void RenderDevice::endSingleUseCommandBuffer(VkCommandBuffer commandBuffer)
 
 	if (vkQueueSubmit(m_vkGraphicsQueue, 1, &submitInfo, fence) != VK_SUCCESS)
 	{
-		fprintf(stderr, "failed to submit to queue.\n");
+		print("failed to submit to queue.\n");
 	}
 
 	if (vkWaitForFences(m_vkDevice, 1, &fence, VK_TRUE, kDefaultFenceTimeout) != VK_SUCCESS)
 	{
-		fprintf(stderr, "failed to wait on fence.\n");
+		print("failed to wait on fence.\n");
 	}
 
 	vkDestroyFence(m_vkDevice, fence, nullptr);
@@ -1622,7 +1622,7 @@ void RenderDevice::transitionImageLayout(VkCommandBuffer commandBuffer, VkImage 
 	}
 	else
 	{
-		fprintf(stderr, "unsupported layout transition!\n");
+		print("unsupported layout transition!\n");
 		exit(1);
 	}
 	

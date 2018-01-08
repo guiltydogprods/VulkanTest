@@ -15,7 +15,7 @@ int main(int argc, char *argv[])
 
 	if (!glfwInit())
 	{
-		fprintf(stderr, "glfwInit failed.\n");
+		print("glfwInit failed.\n");
 		exit(EXIT_FAILURE);
 	}
 
