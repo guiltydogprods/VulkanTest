@@ -16,13 +16,16 @@ public:
 	inline const char *getApplicationName()				{ return m_appName;				}
 	inline uint32_t getScreenWidth()					{ return m_screenWidth;			}
 	inline uint32_t getScreenHeight()					{ return m_screenHeight;		}
+#if defined(WIN32)
 	inline GLFWwindow *getGLFWwindow()					{ return m_glfwWindow;			}
 	inline void setGLFWwindow(GLFWwindow *glfwWindow)	{ m_glfwWindow = glfwWindow;	}
-
+#endif // defined(WIND32)
 protected:
 	const char			*m_appName;
 	uint32_t			m_screenWidth;
 	uint32_t			m_screenHeight;
+#if defined(WIN32)
 	GLFWwindow			*m_glfwWindow;
+#endif // defined(WIND32)
 	static Application *ms_application;
 };
