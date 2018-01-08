@@ -110,7 +110,9 @@ struct Mesh
 	Mesh(const char *filename);
 	~Mesh();
 
-	void processMeshChunk(ChunkId *chunk);
+	void		processMeshChunk(ChunkId *chunk);
+	uint8_t*	processMeshRecursive(uint8_t* ptr, uint32_t& renderableIndex, uint32_t& nodeIndex, int32_t parentIndex);	//, VertexBuffer& vertexBuffer, int64_t& vertexBufferOffset, IndexBuffer& indexBuffer, int64_t& indexBufferOffset)
+
 
 	MeshNode	*m_hierarchy;
 	glm::mat4x4	*m_transforms;
