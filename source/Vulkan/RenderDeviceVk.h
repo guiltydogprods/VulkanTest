@@ -102,3 +102,13 @@ struct RenderDevice
 	VkImageView							m_vkTextureImageView;
 	VkSampler							m_vkSampler;
 };
+
+struct StagingBuffer
+{
+	StagingBuffer(RenderDevice& renderDevice, size_t size, VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags);
+	~StagingBuffer();
+
+	VkDevice&		m_vkDevice;
+	VkBuffer		m_buffer;
+	VkDeviceMemory	m_memory;
+};

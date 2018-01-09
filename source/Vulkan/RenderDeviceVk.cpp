@@ -573,44 +573,38 @@ void RenderDevice::createVertexBuffer()
 		{ { 0.0f, -1.0f, -1.5f }, { 0.0f, 0.0f, 1.0f }, { 1.0f, 0.0f } },
 
 	};
-	uint32_t verticesSize = sizeof(vertices);
+	size_t verticesSize = sizeof(vertices);
 
 	uint32_t indices[] = { 0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7 };
-	uint32_t indicesSize = sizeof(indices);
+	size_t indicesSize = sizeof(indices);
 
 	VkMemoryAllocateInfo memAlloc = {};
 	memAlloc.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	VkMemoryRequirements memReqs;
 	void *data = nullptr;
 
-	struct StagingBuffer
-	{
-		VkDeviceMemory	memory;
-		VkBuffer		buffer;
-	};
-
-	struct
-	{
-		StagingBuffer vertices;
-		StagingBuffer indices;
-	}stagingBuffers;
+//	struct
+//	{
+//		StagingBuffer vertices;
+//		StagingBuffer indices;
+//	}stagingBuffers;
 
 	VkBufferCreateInfo vertexBufferInfo = {};
 	vertexBufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	vertexBufferInfo.size = verticesSize;
 	vertexBufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 
-	vkCreateBuffer(m_vkDevice, &vertexBufferInfo, nullptr, &stagingBuffers.vertices.buffer);
+//	vkCreateBuffer(m_vkDevice, &vertexBufferInfo, nullptr, &stagingBuffers.vertices.buffer);
+	StagingBuffer vertexStagingBuffer(*this, verticesSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 
-	vkGetBufferMemoryRequirements(m_vkDevice, stagingBuffers.vertices.buffer, &memReqs);
-	memAlloc.allocationSize = memReqs.size;
-	getMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, &memAlloc.memoryTypeIndex);
-	vkAllocateMemory(m_vkDevice, &memAlloc, nullptr, &stagingBuffers.vertices.memory);
-
-	vkMapMemory(m_vkDevice, stagingBuffers.vertices.memory, 0, verticesSize, 0, &data);
+//	vkGetBufferMemoryRequirements(m_vkDevice, stagingBuffers.vertices.buffer, &memReqs);
+//	memAlloc.allocationSize = memReqs.size;
+//	getMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, &memAlloc.memoryTypeIndex);
+//	vkAllocateMemory(m_vkDevice, &memAlloc, nullptr, &stagingBuffers.vertices.memory);
+	vkMapMemory(m_vkDevice, vertexStagingBuffer.m_memory, 0, verticesSize, 0, &data);
 	memcpy(data, vertices, verticesSize);
-	vkUnmapMemory(m_vkDevice, stagingBuffers.vertices.memory);
-	vkBindBufferMemory(m_vkDevice, stagingBuffers.vertices.buffer, stagingBuffers.vertices.memory, 0);
+	vkUnmapMemory(m_vkDevice, vertexStagingBuffer.m_memory);
+	vkBindBufferMemory(m_vkDevice, vertexStagingBuffer.m_buffer, vertexStagingBuffer.m_memory, 0);
 
 	vertexBufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 	vkCreateBuffer(m_vkDevice, &vertexBufferInfo, nullptr, &m_vkVertexBuffer);
@@ -625,15 +619,17 @@ void RenderDevice::createVertexBuffer()
 	indexBufferInfo.size = indicesSize;
 	indexBufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 
-	vkCreateBuffer(m_vkDevice, &indexBufferInfo, nullptr, &stagingBuffers.indices.buffer);
-	vkGetBufferMemoryRequirements(m_vkDevice, stagingBuffers.indices.buffer, &memReqs);
-	memAlloc.allocationSize = memReqs.size;
-	getMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, &memAlloc.memoryTypeIndex);
-	vkAllocateMemory(m_vkDevice, &memAlloc, nullptr, &stagingBuffers.indices.memory);
-	vkMapMemory(m_vkDevice, stagingBuffers.indices.memory, 0, indicesSize, 0, &data);
+//	vkCreateBuffer(m_vkDevice, &indexBufferInfo, nullptr, &stagingBuffers.indices.buffer);
+	StagingBuffer indexStagingBuffer(*this, indicesSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+
+//	vkGetBufferMemoryRequirements(m_vkDevice, stagingBuffers.indices.buffer, &memReqs);
+//	memAlloc.allocationSize = memReqs.size;
+//	getMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, &memAlloc.memoryTypeIndex);
+//	vkAllocateMemory(m_vkDevice, &memAlloc, nullptr, &stagingBuffers.indices.memory);
+	vkMapMemory(m_vkDevice, indexStagingBuffer.m_memory, 0, indicesSize, 0, &data);
 	memcpy(data, indices, indicesSize);
-	vkUnmapMemory(m_vkDevice, stagingBuffers.indices.memory);
-	vkBindBufferMemory(m_vkDevice, stagingBuffers.indices.buffer, stagingBuffers.indices.memory, 0);
+	vkUnmapMemory(m_vkDevice, indexStagingBuffer.m_memory);
+	vkBindBufferMemory(m_vkDevice, indexStagingBuffer.m_buffer, indexStagingBuffer.m_memory, 0);
 
 	indexBufferInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 	vkCreateBuffer(m_vkDevice, &indexBufferInfo, nullptr, &m_vkIndexBuffer);
@@ -647,16 +643,16 @@ void RenderDevice::createVertexBuffer()
 
 	VkBufferCopy copyRegion = {};
 	copyRegion.size = verticesSize;
-	vkCmdCopyBuffer(copyCommandBuffer, stagingBuffers.vertices.buffer, m_vkVertexBuffer, 1, &copyRegion);
+	vkCmdCopyBuffer(copyCommandBuffer, vertexStagingBuffer.m_buffer, m_vkVertexBuffer, 1, &copyRegion);
 	copyRegion.size = indicesSize;
-	vkCmdCopyBuffer(copyCommandBuffer, stagingBuffers.indices.buffer, m_vkIndexBuffer, 1, &copyRegion);
+	vkCmdCopyBuffer(copyCommandBuffer, indexStagingBuffer.m_buffer, m_vkIndexBuffer, 1, &copyRegion);
 
 	endSingleUseCommandBuffer(copyCommandBuffer);
 
-	vkDestroyBuffer(m_vkDevice, stagingBuffers.vertices.buffer, nullptr);
-	vkFreeMemory(m_vkDevice, stagingBuffers.vertices.memory, nullptr);
-	vkDestroyBuffer(m_vkDevice, stagingBuffers.indices.buffer, nullptr);
-	vkFreeMemory(m_vkDevice, stagingBuffers.indices.memory, nullptr);
+//	vkDestroyBuffer(m_vkDevice, stagingBuffers.vertices.buffer, nullptr);
+//	vkFreeMemory(m_vkDevice, stagingBuffers.vertices.memory, nullptr);
+//	vkDestroyBuffer(m_vkDevice, stagingBuffers.indices.buffer, nullptr);
+//	vkFreeMemory(m_vkDevice, stagingBuffers.indices.memory, nullptr);
 
 	print("set up vertex and index buffers\n");
 
@@ -1648,4 +1644,39 @@ void RenderDevice::copyImage(VkCommandBuffer commandBuffer, VkImage srcImage, Vk
 	region.extent.depth = 1;
 
 	vkCmdCopyImage(commandBuffer, srcImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+}
+
+StagingBuffer::StagingBuffer(RenderDevice& renderDevice, size_t size, VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags)
+	: m_vkDevice(renderDevice.m_vkDevice)
+	, m_buffer(nullptr)
+	, m_memory(nullptr)
+{
+	m_vkDevice = renderDevice.m_vkDevice;
+
+	VkBufferCreateInfo vertexBufferInfo = {};
+	vertexBufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	vertexBufferInfo.size = size;
+	vertexBufferInfo.usage = usageFlags;
+
+	vkCreateBuffer(m_vkDevice, &vertexBufferInfo, nullptr, &m_buffer);
+
+	VkMemoryRequirements memReqs;
+	vkGetBufferMemoryRequirements(m_vkDevice, m_buffer, &memReqs);
+
+	VkMemoryAllocateInfo memAlloc = {};
+	memAlloc.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	memAlloc.allocationSize = memReqs.size;
+	renderDevice.getMemoryType(memReqs.memoryTypeBits, memoryPropertyFlags, &memAlloc.memoryTypeIndex);
+	vkAllocateMemory(m_vkDevice, &memAlloc, nullptr, &m_memory);
+
+//	vkMapMemory(m_vkDevice, stagingBuffers.vertices.memory, 0, verticesSize, 0, &data);
+//	memcpy(data, vertices, verticesSize);
+//	vkUnmapMemory(m_vkDevice, stagingBuffers.vertices.memory);
+//	vkBindBufferMemory(m_vkDevice, stagingBuffers.vertices.buffer, stagingBuffers.vertices.memory, 0);
+}
+
+StagingBuffer::~StagingBuffer()
+{
+	vkDestroyBuffer(m_vkDevice, m_buffer, nullptr);
+	vkFreeMemory(m_vkDevice, m_memory, nullptr);
 }
