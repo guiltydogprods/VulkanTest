@@ -583,24 +583,13 @@ void RenderDevice::createVertexBuffer()
 	VkMemoryRequirements memReqs;
 	void *data = nullptr;
 
-//	struct
-//	{
-//		StagingBuffer vertices;
-//		StagingBuffer indices;
-//	}stagingBuffers;
-
 	VkBufferCreateInfo vertexBufferInfo = {};
 	vertexBufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	vertexBufferInfo.size = verticesSize;
 	vertexBufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 
-//	vkCreateBuffer(m_vkDevice, &vertexBufferInfo, nullptr, &stagingBuffers.vertices.buffer);
 	StagingBuffer vertexStagingBuffer(*this, verticesSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 
-//	vkGetBufferMemoryRequirements(m_vkDevice, stagingBuffers.vertices.buffer, &memReqs);
-//	memAlloc.allocationSize = memReqs.size;
-//	getMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, &memAlloc.memoryTypeIndex);
-//	vkAllocateMemory(m_vkDevice, &memAlloc, nullptr, &stagingBuffers.vertices.memory);
 	vkMapMemory(m_vkDevice, vertexStagingBuffer.m_memory, 0, verticesSize, 0, &data);
 	memcpy(data, vertices, verticesSize);
 	vkUnmapMemory(m_vkDevice, vertexStagingBuffer.m_memory);
@@ -619,13 +608,8 @@ void RenderDevice::createVertexBuffer()
 	indexBufferInfo.size = indicesSize;
 	indexBufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 
-//	vkCreateBuffer(m_vkDevice, &indexBufferInfo, nullptr, &stagingBuffers.indices.buffer);
 	StagingBuffer indexStagingBuffer(*this, indicesSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 
-//	vkGetBufferMemoryRequirements(m_vkDevice, stagingBuffers.indices.buffer, &memReqs);
-//	memAlloc.allocationSize = memReqs.size;
-//	getMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, &memAlloc.memoryTypeIndex);
-//	vkAllocateMemory(m_vkDevice, &memAlloc, nullptr, &stagingBuffers.indices.memory);
 	vkMapMemory(m_vkDevice, indexStagingBuffer.m_memory, 0, indicesSize, 0, &data);
 	memcpy(data, indices, indicesSize);
 	vkUnmapMemory(m_vkDevice, indexStagingBuffer.m_memory);
@@ -648,11 +632,6 @@ void RenderDevice::createVertexBuffer()
 	vkCmdCopyBuffer(copyCommandBuffer, indexStagingBuffer.m_buffer, m_vkIndexBuffer, 1, &copyRegion);
 
 	endSingleUseCommandBuffer(copyCommandBuffer);
-
-//	vkDestroyBuffer(m_vkDevice, stagingBuffers.vertices.buffer, nullptr);
-//	vkFreeMemory(m_vkDevice, stagingBuffers.vertices.memory, nullptr);
-//	vkDestroyBuffer(m_vkDevice, stagingBuffers.indices.buffer, nullptr);
-//	vkFreeMemory(m_vkDevice, stagingBuffers.indices.memory, nullptr);
 
 	print("set up vertex and index buffers\n");
 
