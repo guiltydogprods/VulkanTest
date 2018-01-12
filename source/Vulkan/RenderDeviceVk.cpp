@@ -1212,7 +1212,7 @@ void RenderDevice::createCommandBuffers()
 	vkDestroyPipelineLayout(m_vkDevice, m_vkPipelineLayout, nullptr);
 }
 
-VkBool32 RenderDevice::getMemoryType(uint32_t typeBits, VkMemoryPropertyFlags  properties, uint32_t& typeIndex)
+VkBool32 RenderDevice::getMemoryType(uint32_t typeBits, VkMemoryPropertyFlags properties, uint32_t& typeIndex)
 {
 	VkPhysicalDeviceMemoryProperties& deviceMemoryProperties = m_vkPhysicalDeviceMemoryProperties[m_selectedDevice];
 
