@@ -21,4 +21,5 @@
 #include <string>
 
 #include "Framework/Application.h"
+#include "Framework/File.h"
 #include "Framework/System.h"

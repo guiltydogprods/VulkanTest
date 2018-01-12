@@ -109,7 +109,13 @@ struct StagingBuffer
 	StagingBuffer(RenderDevice& renderDevice, size_t size, VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags);
 	~StagingBuffer();
 
+	void *mapMemory();
+	void unmapMemory();
+	void bindMemory();
+
 	VkDevice&		m_vkDevice;
 	VkBuffer		m_buffer;
 	VkDeviceMemory	m_memory;
+	size_t			m_requestedSize;
+	size_t			m_allocatedSize;
 };
