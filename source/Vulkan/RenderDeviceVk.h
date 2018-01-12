@@ -26,7 +26,8 @@ struct RenderDevice
 	void createDescriptorSet();
 	void createCommandBuffers();
 
-	VkBool32 getMemoryType(uint32_t typeBits, VkFlags properties, uint32_t* typeIndex);
+	VkBool32 getMemoryType(uint32_t typeBits, VkFlags properties, uint32_t& typeIndex);
+
 	VkShaderModule createShaderModule(const char *filename);
 	VkCommandBuffer beginSingleUseCommandBuffer();
 	void endSingleUseCommandBuffer(VkCommandBuffer commandBuffer);
