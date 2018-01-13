@@ -1582,7 +1582,8 @@ Buffer::~Buffer()
 void *Buffer::mapMemory()
 {
 	void *data = nullptr;
-	vkMapMemory(m_vkDevice, m_memory, 0, m_allocatedSize, 0, &data);
+	VkResult res = vkMapMemory(m_vkDevice, m_memory, 0, m_allocatedSize, 0, &data);
+	AssertMsg(res == VK_SUCCESS, "vkMapMemory failed (res = %d).", static_cast<int32_t>(res));
 	return data;
 }
 
@@ -1593,5 +1594,6 @@ void Buffer::unmapMemory()
 
 void Buffer::bindMemory()
 {
-	vkBindBufferMemory(m_vkDevice, m_buffer, m_memory, 0);
+	VkResult res = vkBindBufferMemory(m_vkDevice, m_buffer, m_memory, 0);
+	AssertMsg(res == VK_SUCCESS, "vkBindBuffer failed (res = %d).", static_cast<int32_t>(res));
 }
