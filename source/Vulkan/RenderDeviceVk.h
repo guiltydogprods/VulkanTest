@@ -106,7 +106,7 @@ struct RenderDevice
 
 struct Buffer
 {
-	Buffer(RenderDevice& renderDevice, size_t size, VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags);
+	Buffer(RenderDevice& renderDevice, VkDeviceSize size, VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags);
 	~Buffer();
 
 	void *mapMemory();
@@ -116,6 +116,5 @@ struct Buffer
 	VkDevice&		m_vkDevice;
 	VkBuffer		m_buffer;
 	VkDeviceMemory	m_memory;
-	size_t			m_requestedSize;
-	size_t			m_allocatedSize;
+	VkDeviceSize	m_allocatedSize;
 };

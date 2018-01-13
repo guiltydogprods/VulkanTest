@@ -8,7 +8,7 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include "glm/gtx/transform.hpp"
 
-//#define USE_SECONDARY_DEVICE
+#define USE_SECONDARY_DEVICE
 
 const char* validationLayers[] = 
 {
@@ -103,7 +103,7 @@ void RenderDevice::cleanup()
 	vkDestroyDescriptorPool(m_vkDevice, m_vkDescriptorPool, nullptr);
 	vkDestroyPipeline(m_vkDevice, m_vkGraphicsPipeline, nullptr);
 	vkDestroyRenderPass(m_vkDevice, m_vkRenderPass, nullptr);
-	for (size_t i = 0; i < m_vkSwapChainImageCount; ++i)
+	for (uint32_t i = 0; i < m_vkSwapChainImageCount; ++i)
 	{
 		vkDestroyFramebuffer(m_vkDevice, m_vkSwapChainFramebuffers[i], nullptr);
 		vkDestroyImageView(m_vkDevice, m_vkSwapChainImageViews[i], nullptr);
@@ -773,7 +773,7 @@ void RenderDevice::createFramebuffers()
 	m_vkSwapChainFramebuffers = new VkFramebuffer [m_vkSwapChainImageCount];
 
 	// Create an image view for every image in the swap chain
-	for (size_t i = 0; i < m_vkSwapChainImageCount; i++)
+	for (uint32_t i = 0; i < m_vkSwapChainImageCount; i++)
 	{
 		VkImageViewCreateInfo createInfo = {};
 		createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -799,7 +799,7 @@ void RenderDevice::createFramebuffers()
 
 	print("created image views for swap chain images\n");;
 
-	for (size_t i = 0; i < m_vkSwapChainImageCount; i++)
+	for (uint32_t i = 0; i < m_vkSwapChainImageCount; i++)
 	{
 		VkImageView attachements[] = { m_vkSwapChainImageViews[i], m_vkDepthBufferView };
 
@@ -1545,11 +1545,10 @@ void RenderDevice::copyImage(VkCommandBuffer commandBuffer, VkImage srcImage, Vk
 	vkCmdCopyImage(commandBuffer, srcImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 }
 
-Buffer::Buffer(RenderDevice& renderDevice, size_t size, VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags)
+Buffer::Buffer(RenderDevice& renderDevice, VkDeviceSize size, VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags)
 	: m_vkDevice(renderDevice.m_vkDevice)
 	, m_buffer(nullptr)
 	, m_memory(nullptr)
-	, m_requestedSize(size)
 	, m_allocatedSize(0)
 {
 	m_vkDevice = renderDevice.m_vkDevice;
