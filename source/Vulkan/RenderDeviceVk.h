@@ -1,5 +1,7 @@
 #pragma once 
 
+struct Buffer;
+
 struct RenderDevice
 {
 	RenderDevice();
@@ -60,10 +62,8 @@ struct RenderDevice
 	VkSemaphore							m_vkImageAvailableSemaphore;
 	VkSemaphore							m_vkRenderingFinishedSemaphore;
 
-	VkBuffer							m_vkVertexBuffer;
-	VkDeviceMemory						m_vkVertexBufferMemory;
-	VkBuffer							m_vkIndexBuffer;
-	VkDeviceMemory						m_vkIndexBufferMemory;
+	Buffer								*m_vertexBuffer;
+	Buffer								*m_indexBuffer;
 
 	VkVertexInputBindingDescription		m_vkVertexBindingDescription;
 	uint32_t							m_vkVertexAttributeDescriptionCount;
@@ -104,10 +104,10 @@ struct RenderDevice
 	VkSampler							m_vkSampler;
 };
 
-struct StagingBuffer
+struct Buffer
 {
-	StagingBuffer(RenderDevice& renderDevice, size_t size, VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags);
-	~StagingBuffer();
+	Buffer(RenderDevice& renderDevice, size_t size, VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags);
+	~Buffer();
 
 	void *mapMemory();
 	void unmapMemory();
