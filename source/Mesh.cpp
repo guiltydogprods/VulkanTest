@@ -1,8 +1,9 @@
 #include "stdafx.h"
 #include "Mesh.h"
 #include "Framework/File.h"
+#include "Vulkan/RenderDeviceVk.h"
 
-Mesh::Mesh(const char *filename)
+Mesh::Mesh(const char *filename, Buffer& vertexBuffer, int64_t& vertexBufferOffset, Buffer& indexBuffer, int64_t& indexBufferOffset)
 	: m_hierarchy(nullptr)
 	, m_transforms(nullptr)
 	, m_renderables(nullptr)
@@ -31,7 +32,7 @@ Mesh::Mesh(const char *filename)
 		}
 		else if (!strncmp(chunk->tag, "MESH", 4))
 		{
-			processMeshChunk(chunk);
+			processMeshChunk(chunk, vertexBuffer, vertexBufferOffset, indexBuffer, indexBufferOffset);
 			bLoaded = true;
 		}
 		else
@@ -52,7 +53,7 @@ Mesh::~Mesh()
 	m_hierarchy = 0;
 }
 
-void Mesh::processMeshChunk(ChunkId *chunk)
+void Mesh::processMeshChunk(ChunkId *chunk, Buffer& vertexBuffer, int64_t& vertexBufferOffset, Buffer& indexBuffer, int64_t& indexBufferOffset)
 {
 
 	MeshChunk *meshChunk = (MeshChunk *)chunk;
@@ -68,12 +69,11 @@ void Mesh::processMeshChunk(ChunkId *chunk)
 	int32_t parentIndex = -1;
 	for (uint32_t i = 0; i < meshChunk->numMeshes; ++i)
 	{
-		processMeshRecursive(ptr, renderableIndex, nodeIndex, parentIndex);
-//		ptr = LoadMeshChunkRecursive(ptr, renderableIndex, nodeIndex, parentIndex, vertexBuffer, vertexBufferOffset, indexBuffer, indexBufferOffset);
+		processMeshRecursive(ptr, renderableIndex, nodeIndex, parentIndex, vertexBuffer, vertexBufferOffset, indexBuffer, indexBufferOffset);
 	}
 }
 
-uint8_t* Mesh::processMeshRecursive(uint8_t* ptr, uint32_t& renderableIndex, uint32_t& nodeIndex, int32_t parentIndex)	//, VertexBuffer& vertexBuffer, int64_t& vertexBufferOffset, IndexBuffer& indexBuffer, int64_t& indexBufferOffset)
+uint8_t* Mesh::processMeshRecursive(uint8_t* ptr, uint32_t& renderableIndex, uint32_t& nodeIndex, int32_t parentIndex, Buffer& vertexBuffer, int64_t& vertexBufferOffset, Buffer& indexBuffer, int64_t& indexBufferOffset)
 {
 	MeshInfo *info = (MeshInfo *)ptr;
 	RenderableInfo* rendInfo = (RenderableInfo*)(ptr + sizeof(MeshInfo));
@@ -86,7 +86,6 @@ uint8_t* Mesh::processMeshRecursive(uint8_t* ptr, uint32_t& renderableIndex, uin
 	uint8_t* meshData = (uint8_t*)((uint8_t*)rendInfo + sizeof(RenderableInfo) * numRenderables);
 	for (uint32_t rend = 0; rend < numRenderables; ++rend)
 	{
-/*
 		Import::VertexBuffer* srcVertexBuffer = (Import::VertexBuffer*)meshData;
 		uint32_t numVertices = rendInfo[rend].numVertices;
 		uint32_t stride = srcVertexBuffer->m_streams[0].m_stride;
@@ -101,7 +100,7 @@ uint8_t* Mesh::processMeshRecursive(uint8_t* ptr, uint32_t& renderableIndex, uin
 		m_aabbMax[1] = rendInfo->aabbMaxY;
 		m_aabbMax[2] = rendInfo->aabbMaxZ;
 
-		int32_t materialIndex = FindMaterial(rendInfo->materialHash);
+		int32_t materialIndex = 0;	// FindMaterial(rendInfo->materialHash);
 		uint32_t firstVertex = (uint32_t)(vertexBufferOffset / stride);
 		uint32_t firstIndex = (uint32_t)(indexBufferOffset / sizeof(uint32_t));
 		uint32_t indexCount = numIndices;
@@ -115,16 +114,15 @@ uint8_t* Mesh::processMeshRecursive(uint8_t* ptr, uint32_t& renderableIndex, uin
 		for (uint32_t i = 0; i < numStreams; ++i)
 		{
 			uint8_t* vertexData = (uint8_t*)srcVertexBuffer + sizeof(Import::VertexBuffer);
-			vertexBuffer.writeData(i, vertexBufferOffset, numVertices * stride, vertexData);
+//			vertexBuffer.writeData(i, vertexBufferOffset, numVertices * stride, vertexData);
 		}
 		uint32_t* indices = (uint32_t*)((uint8_t*)srcVertexBuffer + verticesSize);
-		indexBuffer.writeData(indexBufferOffset, numIndices * sizeof(uint32_t), indices);
+//		indexBuffer.writeData(indexBufferOffset, numIndices * sizeof(uint32_t), indices);
 		//			});
 		vertexBufferOffset += (numVertices * stride);
 		indexBufferOffset += (numIndices * sizeof(uint32_t));
 		meshData = meshData + verticesSize + indicesSize;
 		renderableIndex++;
-*/
 	}
 	ptr = (uint8_t*)meshData;
 	//		(uint32_t*)&info->worldMatrix, 16;
@@ -132,9 +130,16 @@ uint8_t* Mesh::processMeshRecursive(uint8_t* ptr, uint32_t& renderableIndex, uin
 	parentIndex = nodeIndex++;
 	uint32_t numChildren = info->numChildren;
 	for (uint32_t i = 0; i < numChildren; ++i) {
-		ptr = processMeshRecursive(ptr, renderableIndex, nodeIndex, parentIndex);	// , vertexBuffer, vertexBufferOffset, indexBuffer, indexBufferOffset);
+		ptr = processMeshRecursive(ptr, renderableIndex, nodeIndex, parentIndex, vertexBuffer, vertexBufferOffset, indexBuffer, indexBufferOffset);
 		//			renderableIndex++;
 	}
 	return ptr;
 }
 
+Renderable::Renderable(uint32_t firstVertex, uint32_t firstIndex, uint32_t indexCount, uint32_t materialIndex)
+	: m_firstVertex(firstVertex)
+	, m_firstIndex(firstIndex)
+	, m_indexCount(indexCount)
+	, m_materialIndex(materialIndex)
+{
+}

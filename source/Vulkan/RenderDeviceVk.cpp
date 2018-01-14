@@ -8,7 +8,7 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include "glm/gtx/transform.hpp"
 
-#define USE_SECONDARY_DEVICE
+//#define USE_SECONDARY_DEVICE
 
 const char* validationLayers[] = 
 {
@@ -86,6 +86,10 @@ void RenderDevice::initialize(GLFWwindow *window)
 	createCommandPool();
 	createDepthBuffer();
 	createTexture("stone34.dds");
+}
+
+void RenderDevice::finalize()
+{
 	createVertexBuffer();
 	createUniformBuffer();
 	createRenderPass();

@@ -8,6 +8,7 @@ struct RenderDevice
 	~RenderDevice();
 
 	void initialize(GLFWwindow *window);
+	void finalize();
 	void cleanup();
 	void update();
 	void render();

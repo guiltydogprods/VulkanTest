@@ -35,15 +35,22 @@ void ThunderBallApp::initialize()
 	const char *meshes[] =
 	{
 		"Donut2.s3d",
-		"Sphere.s3d",
-		"box.s3d"
+//		"Sphere.s3d",
+//		"box.s3d"
 	};
+
+	Buffer& vertexBuffer = *m_pRenderDevice->m_vertexBuffer;
+	int64_t vertexBufferOffset = 0;
+	Buffer& indexBuffer = *m_pRenderDevice->m_indexBuffer;
+	int64_t indexBufferOffset = 0;
 
 	m_numMeshes = sizeof(meshes) / sizeof(const char *);
 	Mesh* meshAddr = m_meshes = static_cast<Mesh *>(malloc(sizeof(Mesh) * m_numMeshes));
 
 	for (uint32_t i = 0; i < m_numMeshes; ++i, ++meshAddr)
-		new (meshAddr) Mesh(meshes[i]);
+		new (meshAddr) Mesh(meshes[i], vertexBuffer, vertexBufferOffset, indexBuffer, indexBufferOffset);
+
+	m_pRenderDevice->finalize();
 }
 
 
