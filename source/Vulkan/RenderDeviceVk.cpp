@@ -1582,10 +1582,10 @@ Buffer::~Buffer()
 	vkFreeMemory(m_vkDevice, m_memory, nullptr);
 }
 
-void *Buffer::mapMemory()
+void *Buffer::mapMemory(VkDeviceSize offset, VkDeviceSize size)
 {
 	void *data = nullptr;
-	VkResult res = vkMapMemory(m_vkDevice, m_memory, 0, m_allocatedSize, 0, &data);
+	VkResult res = vkMapMemory(m_vkDevice, m_memory, offset, size, 0, &data);
 	AssertMsg(res == VK_SUCCESS, "vkMapMemory failed (res = %d).", static_cast<int32_t>(res));
 	return data;
 }

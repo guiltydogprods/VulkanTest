@@ -114,9 +114,23 @@ uint8_t* Mesh::processMeshRecursive(uint8_t* ptr, uint32_t& renderableIndex, uin
 		for (uint32_t i = 0; i < numStreams; ++i)
 		{
 			uint8_t* vertexData = (uint8_t*)srcVertexBuffer + sizeof(Import::VertexBuffer);
+			Buffer vertexStagingBuffer(Application::GetApplication()->getRenderDevice(), numVertices * stride, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+			uint8_t *destPtr = static_cast<uint8_t *>(vertexStagingBuffer.mapMemory(0, VK_WHOLE_SIZE));
+			if (destPtr)
+			{
+				memcpy(destPtr, vertexData, numVertices * stride);
+				vertexStagingBuffer.unmapMemory();
+			}
 //			vertexBuffer.writeData(i, vertexBufferOffset, numVertices * stride, vertexData);
 		}
 		uint32_t* indices = (uint32_t*)((uint8_t*)srcVertexBuffer + verticesSize);
+		Buffer indexStagingBuffer(Application::GetApplication()->getRenderDevice(), numIndices * sizeof(uint32_t), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+		uint8_t *destPtr = static_cast<uint8_t *>(indexStagingBuffer.mapMemory(0, VK_WHOLE_SIZE));
+		if (destPtr)
+		{
+			memcpy(destPtr, indices, numIndices * sizeof(uint32_t));
+			indexStagingBuffer.unmapMemory();
+		}
 //		indexBuffer.writeData(indexBufferOffset, numIndices * sizeof(uint32_t), indices);
 		//			});
 		vertexBufferOffset += (numVertices * stride);

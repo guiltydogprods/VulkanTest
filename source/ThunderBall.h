@@ -14,7 +14,7 @@ public:
 	void render();
 
 protected:
-	RenderDevice *m_pRenderDevice;
+//	RenderDevice *m_pRenderDevice;
 	Mesh *m_meshes;
 
 	uint32_t m_numMeshes;

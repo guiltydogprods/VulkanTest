@@ -6,6 +6,7 @@ Application::Application(const char *applicationName, uint32_t screenWidth, uint
 	: m_appName(applicationName)
 	, m_screenWidth(screenWidth)
 	, m_screenHeight(screenHeight)
+	, m_pRenderDevice(nullptr)
 {
 	ms_application = this;
 }

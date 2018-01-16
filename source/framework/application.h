@@ -1,5 +1,7 @@
 #pragma once
 
+struct RenderDevice;
+
 class Application
 {
 public:
@@ -20,6 +22,7 @@ public:
 	inline GLFWwindow *getGLFWwindow()					{ return m_glfwWindow;			}
 	inline void setGLFWwindow(GLFWwindow *glfwWindow)	{ m_glfwWindow = glfwWindow;	}
 #endif // defined(WIND32)
+	inline RenderDevice& getRenderDevice()				{ return *m_pRenderDevice;		}
 protected:
 	const char			*m_appName;
 	uint32_t			m_screenWidth;
@@ -27,5 +30,6 @@ protected:
 #if defined(WIN32)
 	GLFWwindow			*m_glfwWindow;
 #endif // defined(WIND32)
+	RenderDevice		*m_pRenderDevice;
 	static Application *ms_application;
 };

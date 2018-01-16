@@ -110,7 +110,7 @@ struct Buffer
 	Buffer(RenderDevice& renderDevice, VkDeviceSize size, VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags);
 	~Buffer();
 
-	void *mapMemory();
+	void *mapMemory(VkDeviceSize offset = 0, VkDeviceSize size = VK_WHOLE_SIZE);
 	void unmapMemory();
 	void bindMemory();
 
