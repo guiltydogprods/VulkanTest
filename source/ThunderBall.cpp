@@ -42,8 +42,10 @@ void ThunderBallApp::initialize()
 	uint32_t verticesSize = 100000;
 	uint32_t indicesSize = 100000;
 	m_pRenderDevice->m_vertexBuffer = new Buffer(*m_pRenderDevice, verticesSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	m_pRenderDevice->m_vertexBuffer->bindMemory();
 	int64_t vertexBufferOffset = 0;
 	m_pRenderDevice->m_indexBuffer = new Buffer(*m_pRenderDevice, indicesSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	m_pRenderDevice->m_indexBuffer->bindMemory();
 	int64_t indexBufferOffset = 0;
 
 	m_numMeshes = sizeof(meshes) / sizeof(const char *);
@@ -52,7 +54,7 @@ void ThunderBallApp::initialize()
 	for (uint32_t i = 0; i < m_numMeshes; ++i, ++meshAddr)
 		new (meshAddr) Mesh(meshes[i], *m_pRenderDevice->m_vertexBuffer, vertexBufferOffset, *m_pRenderDevice->m_indexBuffer, indexBufferOffset);
 
-	m_pRenderDevice->finalize();
+	m_pRenderDevice->finalize(m_meshes, m_numMeshes);
 }
 
 

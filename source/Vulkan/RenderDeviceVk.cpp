@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "RenderDeviceVk.h"
+#include "../Mesh.h"
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -88,7 +89,7 @@ void RenderDevice::initialize(GLFWwindow *window)
 	createTexture("stone34.dds");
 }
 
-void RenderDevice::finalize()
+void RenderDevice::finalize(Mesh *meshes, uint32_t numMeshes)
 {
 	createVertexBuffer();
 	createUniformBuffer();
@@ -96,7 +97,7 @@ void RenderDevice::finalize()
 	createFramebuffers();
 	createGraphicsPipeline();
 	createDescriptorSet();
-	createCommandBuffers();
+	createCommandBuffers(meshes, numMeshes);
 }
 
 void RenderDevice::cleanup()
@@ -143,10 +144,10 @@ void RenderDevice::update()
 {
 	static float angle = 0.0f;
 
-	glm::vec3 axis(0.0f, 0.0f, 1.0f);
+	glm::vec3 axis(0.707f, 0.0f, 0.707f);
 	glm::mat4x4 modelMatrix = glm::rotate(glm::radians(angle), axis);
 
-	glm::vec3 eye(0.0f, 0.0f, 2.5f);
+	glm::vec3 eye(0.0f, 0.0f, 1.5f);
 	glm::vec3 at(0.0f, 0.0f, 0.0f);
 	glm::vec3 up(0.0f, 1.0f, 0.0f);
 	glm::mat4x4 viewMatrix = glm::lookAt(eye, at, up);
@@ -172,7 +173,7 @@ void RenderDevice::update()
 	uboData->tranformationMatrix = projectionMatrix * viewMatrix * modelMatrix;
 	vkUnmapMemory(m_vkDevice, m_vkUniformBufferMemory);
 
-	angle += 0.25f;
+	angle += 1.0f;
 	if (angle > 360.0f)
 		angle -= 360.0f;
 }
@@ -565,6 +566,7 @@ void RenderDevice::createDepthBuffer()
 
 void RenderDevice::createVertexBuffer()
 {
+#if 0
 	Vertex vertices[] =
 	{
 		{ { -1.0f, -1.0f, 0.0f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f } },
@@ -612,7 +614,7 @@ void RenderDevice::createVertexBuffer()
 	endSingleUseCommandBuffer(copyCommandBuffer);
 
 	print("set up vertex and index buffers\n");
-
+#endif
 	m_vkVertexBindingDescription.binding = 0;
 	m_vkVertexBindingDescription.stride = sizeof(Vertex);
 	m_vkVertexBindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
@@ -883,7 +885,7 @@ void RenderDevice::createGraphicsPipeline()
 	rasterizationCreateInfo.depthClampEnable = VK_FALSE;
 	rasterizationCreateInfo.rasterizerDiscardEnable = VK_FALSE;
 	rasterizationCreateInfo.polygonMode = VK_POLYGON_MODE_FILL;
-	rasterizationCreateInfo.cullMode = VK_CULL_MODE_BACK_BIT;
+	rasterizationCreateInfo.cullMode = VK_CULL_MODE_FRONT_BIT;
 	rasterizationCreateInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 	rasterizationCreateInfo.depthBiasEnable = VK_FALSE;
 	rasterizationCreateInfo.depthBiasConstantFactor = 0.0f;
@@ -1074,7 +1076,7 @@ void RenderDevice::createDescriptorSet()
 	vkUpdateDescriptorSets(m_vkDevice, 2, writeDescriptorSet, 0, nullptr);
 }
 
-void RenderDevice::createCommandBuffers()
+void RenderDevice::createCommandBuffers(Mesh *meshes, uint32_t numMeshes)
 {
 	VkCommandBufferAllocateInfo commandBufferAllocateInfo = {};
 	commandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -1158,7 +1160,7 @@ void RenderDevice::createCommandBuffers()
 
 		vkCmdBindIndexBuffer(m_vkCommandBuffers[i], m_indexBuffer->m_buffer, 0, VK_INDEX_TYPE_UINT32);
 
-		vkCmdDrawIndexed(m_vkCommandBuffers[i], 12, 1, 0, 0, 0);
+		vkCmdDrawIndexed(m_vkCommandBuffers[i], meshes[0].m_renderables[0].m_indexCount, 1, 0, 0, 0);
 
 		vkCmdEndRenderPass(m_vkCommandBuffers[i]);
 

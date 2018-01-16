@@ -21,6 +21,6 @@ layout (binding = 0) uniform ubo_t
 void main()
 {
 	gl_Position = ubo.modelViewProj * vec4(in_position, 1.0);
-	fragColor = in_color;
+	fragColor = vec3(1.0, 1.0, 1.0);	//in_color;
 	fragTexCoord = in_texCoord;
 }

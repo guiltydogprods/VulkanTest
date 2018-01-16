@@ -107,12 +107,13 @@ uint8_t* Mesh::processMeshRecursive(uint8_t* ptr, uint32_t& renderableIndex, uin
 		Renderable *renderablePtr = m_renderables + renderableIndex;
 		Renderable *pRenderable = new (renderablePtr) Renderable(firstVertex, firstIndex, indexCount, materialIndex);
 
-		//			MaterialPtr pMaterial = MaterialManager::Get()->Find(rendInfo[rend].materialHash);
 		uint32_t numStreams = srcVertexBuffer->m_numStreams;
 
-		//			OddJob::dispatchAsync(OddJob::getMainQueue(), [=, &vertexBuffer, &indexBuffer]() {
 		for (uint32_t i = 0; i < numStreams; ++i)
 		{
+			VkCommandBuffer copyCommandBuffer = Application::GetApplication()->getRenderDevice().beginSingleUseCommandBuffer();
+			VkBufferCopy copyRegion = {};
+
 			uint8_t* vertexData = (uint8_t*)srcVertexBuffer + sizeof(Import::VertexBuffer);
 			Buffer vertexStagingBuffer(Application::GetApplication()->getRenderDevice(), numVertices * stride, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 			uint8_t *destPtr = static_cast<uint8_t *>(vertexStagingBuffer.mapMemory(0, VK_WHOLE_SIZE));
@@ -120,9 +121,18 @@ uint8_t* Mesh::processMeshRecursive(uint8_t* ptr, uint32_t& renderableIndex, uin
 			{
 				memcpy(destPtr, vertexData, numVertices * stride);
 				vertexStagingBuffer.unmapMemory();
+				vertexStagingBuffer.bindMemory();
 			}
-//			vertexBuffer.writeData(i, vertexBufferOffset, numVertices * stride, vertexData);
+			copyRegion.size = numVertices * stride;
+			copyRegion.dstOffset = vertexBufferOffset;
+			vkCmdCopyBuffer(copyCommandBuffer, vertexStagingBuffer.m_buffer, vertexBuffer.m_buffer, 1, &copyRegion);
+
+			Application::GetApplication()->getRenderDevice().endSingleUseCommandBuffer(copyCommandBuffer);
 		}
+
+		VkCommandBuffer copyCommandBuffer = Application::GetApplication()->getRenderDevice().beginSingleUseCommandBuffer();
+		VkBufferCopy copyRegion = {};
+
 		uint32_t* indices = (uint32_t*)((uint8_t*)srcVertexBuffer + verticesSize);
 		Buffer indexStagingBuffer(Application::GetApplication()->getRenderDevice(), numIndices * sizeof(uint32_t), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 		uint8_t *destPtr = static_cast<uint8_t *>(indexStagingBuffer.mapMemory(0, VK_WHOLE_SIZE));
@@ -130,22 +140,26 @@ uint8_t* Mesh::processMeshRecursive(uint8_t* ptr, uint32_t& renderableIndex, uin
 		{
 			memcpy(destPtr, indices, numIndices * sizeof(uint32_t));
 			indexStagingBuffer.unmapMemory();
+			indexStagingBuffer.bindMemory();
 		}
-//		indexBuffer.writeData(indexBufferOffset, numIndices * sizeof(uint32_t), indices);
-		//			});
+		copyRegion.dstOffset = indexBufferOffset;
+		copyRegion.size = numIndices * sizeof(uint32_t);
+		vkCmdCopyBuffer(copyCommandBuffer, indexStagingBuffer.m_buffer, indexBuffer.m_buffer, 1, &copyRegion);
+		Application::GetApplication()->getRenderDevice().endSingleUseCommandBuffer(copyCommandBuffer);
+
 		vertexBufferOffset += (numVertices * stride);
 		indexBufferOffset += (numIndices * sizeof(uint32_t));
 		meshData = meshData + verticesSize + indicesSize;
 		renderableIndex++;
 	}
+
 	ptr = (uint8_t*)meshData;
-	//		(uint32_t*)&info->worldMatrix, 16;
 	memcpy(&m_transforms[nodeIndex], &info->worldMatrix, sizeof(glm::mat4x4));
 	parentIndex = nodeIndex++;
 	uint32_t numChildren = info->numChildren;
-	for (uint32_t i = 0; i < numChildren; ++i) {
+	for (uint32_t i = 0; i < numChildren; ++i)
+	{
 		ptr = processMeshRecursive(ptr, renderableIndex, nodeIndex, parentIndex, vertexBuffer, vertexBufferOffset, indexBuffer, indexBufferOffset);
-		//			renderableIndex++;
 	}
 	return ptr;
 }

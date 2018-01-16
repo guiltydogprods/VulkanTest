@@ -1,6 +1,7 @@
 #pragma once 
 
 struct Buffer;
+struct Mesh;
 
 struct RenderDevice
 {
@@ -8,7 +9,7 @@ struct RenderDevice
 	~RenderDevice();
 
 	void initialize(GLFWwindow *window);
-	void finalize();
+	void finalize(Mesh *meshes, uint32_t numMeshes);
 	void cleanup();
 	void update();
 	void render();
@@ -27,7 +28,7 @@ struct RenderDevice
 	void createFramebuffers();
 	void createGraphicsPipeline();
 	void createDescriptorSet();
-	void createCommandBuffers();
+	void createCommandBuffers(Mesh *meshes, uint32_t numMeshes);
 
 	VkBool32 getMemoryType(uint32_t typeBits, VkFlags properties, uint32_t& typeIndex);
 
