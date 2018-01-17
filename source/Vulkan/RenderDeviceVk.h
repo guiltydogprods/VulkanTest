@@ -14,6 +14,7 @@ struct RenderDevice
 	void update();
 	void render();
 
+	void cleanupSwapChain();
 	void createInstance();
 	void createSurface(GLFWwindow *window);
 	void createDevice();
@@ -24,11 +25,13 @@ struct RenderDevice
 	void createVertexBuffer();
 	void createUniformBuffer();
 	void createSwapChain();
+	void recreateSwapChain();
 	void createRenderPass();
 	void createFramebuffers();
 	void createGraphicsPipeline();
 	void createDescriptorSet();
 	void createCommandBuffers(Mesh *meshes, uint32_t numMeshes);
+
 
 	VkBool32 getMemoryType(uint32_t typeBits, VkFlags properties, uint32_t& typeIndex);
 
@@ -104,6 +107,9 @@ struct RenderDevice
 	VkDeviceMemory						m_vkTextureImageMemory;
 	VkImageView							m_vkTextureImageView;
 	VkSampler							m_vkSampler;
+
+	Mesh								*m_meshes;
+	uint32_t							m_numMeshes;
 };
 
 struct Buffer

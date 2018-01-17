@@ -91,6 +91,8 @@ void RenderDevice::initialize(GLFWwindow *window)
 
 void RenderDevice::finalize(Mesh *meshes, uint32_t numMeshes)
 {
+	m_meshes = meshes;
+	m_numMeshes = numMeshes;
 	createVertexBuffer();
 	createUniformBuffer();
 	createRenderPass();
@@ -98,6 +100,29 @@ void RenderDevice::finalize(Mesh *meshes, uint32_t numMeshes)
 	createGraphicsPipeline();
 	createDescriptorSet();
 	createCommandBuffers(meshes, numMeshes);
+}
+
+void RenderDevice::cleanupSwapChain()
+{
+	vkFreeCommandBuffers(m_vkDevice, m_vkCommandPool, m_vkSwapChainImageCount, m_vkCommandBuffers);
+
+	for (uint32_t i = 0; i < m_vkSwapChainImageCount; ++i)
+	{
+		vkDestroyFramebuffer(m_vkDevice, m_vkSwapChainFramebuffers[i], nullptr);
+//		vkDestroyImageView(m_vkDevice, m_vkSwapChainImageViews[i], nullptr);
+	}
+
+	vkDestroyPipeline(m_vkDevice, m_vkGraphicsPipeline, nullptr);
+	vkDestroyPipelineLayout(m_vkDevice, m_vkPipelineLayout, nullptr);
+	vkDestroyRenderPass(m_vkDevice, m_vkRenderPass, nullptr);
+
+	for (size_t i = 0; i < m_vkSwapChainImageCount; i++)
+	{
+//		vkDestroyImageView(device, swapChainImageViews[i], nullptr);
+		vkDestroyImageView(m_vkDevice, m_vkSwapChainImageViews[i], nullptr);
+	}
+
+	vkDestroySwapchainKHR(m_vkDevice, m_vkSwapChain, nullptr);
 }
 
 void RenderDevice::cleanup()
@@ -183,7 +208,12 @@ void RenderDevice::render()
 	uint32_t imageIndex;
 	VkResult res = vkAcquireNextImageKHR(m_vkDevice, m_vkSwapChain, UINT64_MAX, m_vkImageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
 
-	if (res != VK_SUCCESS && res != VK_SUBOPTIMAL_KHR) 
+	if (res == VK_ERROR_OUT_OF_DATE_KHR)
+	{
+		recreateSwapChain();
+		return;
+	}
+	else if (res != VK_SUCCESS && res != VK_SUBOPTIMAL_KHR) 
 	{
 		print("failed to acquire image\n");
 //		exit(EXIT_FAILURE);
@@ -714,6 +744,21 @@ void RenderDevice::createSwapChain()
 		print("failed to acquire swap chain images\n");
 		exit(EXIT_FAILURE);
 	}
+}
+
+void RenderDevice::recreateSwapChain()
+{
+	vkDeviceWaitIdle(m_vkDevice);
+
+	cleanupSwapChain();
+
+	createSwapChain();
+//	createImageViews();
+	createDepthBuffer();
+	createRenderPass();
+	createGraphicsPipeline();
+	createFramebuffers();
+	createCommandBuffers(m_meshes, m_numMeshes);
 }
 
 void RenderDevice::createRenderPass()
