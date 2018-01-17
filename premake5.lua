@@ -51,3 +51,14 @@ project "ThunderBall"
       optimize "On"
       libdirs { "lib/Release" }
 
+filter 'files:**.vert or files:**.frag'
+   -- A message to display while this build step is running (optional)
+   buildmessage 'Compiling %{file.relpath}'
+
+   -- One or more commands to run (required)
+   buildcommands {
+      'glslangValidator -V -o "%{file.relpath}.spv" "%{file.relpath}"'
+   }
+
+   -- One or more outputs resulting from the build (required)
+   buildoutputs { '%{file.relpath}.spv' }

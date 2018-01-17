@@ -872,8 +872,8 @@ void RenderDevice::createFramebuffers()
 
 void RenderDevice::createGraphicsPipeline()
 {
-	VkShaderModule vertexShaderModule = createShaderModule("Shaders/vert.spv");
-	VkShaderModule fragmentShaderModule = createShaderModule("Shaders/frag.spv");
+	VkShaderModule vertexShaderModule = createShaderModule("Shaders/shader.vert.spv");
+	VkShaderModule fragmentShaderModule = createShaderModule("Shaders/shader.frag.spv");
 
 	VkPipelineShaderStageCreateInfo vertexShaderCreateInfo = {};
 	vertexShaderCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
