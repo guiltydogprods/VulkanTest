@@ -1254,20 +1254,12 @@ VkBool32 RenderDevice::getMemoryType(uint32_t typeBits, VkMemoryPropertyFlags pr
 
 VkShaderModule RenderDevice::createShaderModule(const char *filename)
 {
-	FILE *fptr = nullptr;
-	errno_t err = fopen_s(&fptr, filename, "rb");
-
-	fseek(fptr, 0, SEEK_END);
-	size_t fileSize = ftell(fptr);
-	uint8_t *fileBytes = static_cast<uint8_t *>(alloca(fileSize));
-	fseek(fptr, 0, SEEK_SET);
-	fread(fileBytes, 1, fileSize, fptr);
-	fclose(fptr);
+	File file(filename);
 
 	VkShaderModuleCreateInfo createInfo = {};
 	createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-	createInfo.codeSize = fileSize;
-	createInfo.pCode = reinterpret_cast<uint32_t *>(fileBytes);
+	createInfo.codeSize = file.m_sizeInBytes;
+	createInfo.pCode = reinterpret_cast<uint32_t *>(file.m_buffer);
 
 	VkShaderModule shaderModule;
 	if (vkCreateShaderModule(m_vkDevice, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
