@@ -109,16 +109,11 @@ void RenderDevice::cleanupSwapChain()
 	for (uint32_t i = 0; i < m_vkSwapChainImageCount; ++i)
 	{
 		vkDestroyFramebuffer(m_vkDevice, m_vkSwapChainFramebuffers[i], nullptr);
+		vkDestroyImageView(m_vkDevice, m_vkSwapChainImageViews[i], nullptr);
 	}
 
 	vkDestroyPipeline(m_vkDevice, m_vkGraphicsPipeline, nullptr);
 	vkDestroyRenderPass(m_vkDevice, m_vkRenderPass, nullptr);
-
-	for (size_t i = 0; i < m_vkSwapChainImageCount; i++)
-	{
-//		vkDestroyImageView(device, swapChainImageViews[i], nullptr);
-		vkDestroyImageView(m_vkDevice, m_vkSwapChainImageViews[i], nullptr);
-	}
 
 	vkDestroySwapchainKHR(m_vkDevice, m_vkSwapChain, nullptr);
 }
