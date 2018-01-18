@@ -35,7 +35,7 @@ void ThunderBallApp::initialize()
 	const char *meshes[] =
 	{
 		"Donut2.s3d",
-//		"Sphere.s3d",
+		"Sphere.s3d",
 //		"box.s3d"
 	};
 

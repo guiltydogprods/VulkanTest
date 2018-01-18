@@ -15,12 +15,17 @@ layout(location = 2) in vec2 in_texCoord;
 
 layout (binding = 0) uniform ubo_t
 {
-	mat4 modelViewProj;
+	mat4 modelViewProj[2];
 } ubo;
+
+layout (push_constant) uniform pushConstants_t
+{
+    layout (offset = 0) uint drawId;
+} pushConstants;
 
 void main()
 {
-	gl_Position = ubo.modelViewProj * vec4(in_position, 1.0);
+	gl_Position = ubo.modelViewProj[pushConstants.drawId] * vec4(in_position, 1.0);
 	fragColor = vec3(1.0, 1.0, 1.0);	//in_color;
 	fragTexCoord = in_texCoord;
 }

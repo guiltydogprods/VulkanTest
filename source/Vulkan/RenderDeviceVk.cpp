@@ -33,7 +33,7 @@ struct Vertex
 
 struct UniformBufferData
 {
-	glm::mat4x4 tranformationMatrix;
+	glm::mat4x4 tranformationMatrix[2];
 };
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objType, uint64_t obj, size_t location, int32_t code, const char* layerPrefix, const char* msg, void* userData)
@@ -163,7 +163,9 @@ void RenderDevice::update()
 	static float angle = 0.0f;
 
 	glm::vec3 axis(0.707f, 0.0f, 0.707f);
-	glm::mat4x4 modelMatrix = glm::rotate(glm::radians(angle), axis);
+	glm::vec3 axis2(0.0, 0.0f, 1.0f);
+	glm::mat4x4 modelMatrix = glm::translate(glm::vec3(-0.5f, 0.0f, 0.0f)) * glm::rotate(glm::radians(angle), axis);
+	glm::mat4x4 modelMatrix2 = glm::translate(glm::vec3(0.5f, 0.0f, 0.0f)) * glm::rotate(glm::radians(-angle), axis2);
 
 	glm::vec3 eye(0.0f, 0.0f, 1.5f);
 	glm::vec3 at(0.0f, 0.0f, 0.0f);
@@ -188,7 +190,8 @@ void RenderDevice::update()
 	void *data;
 	vkMapMemory(m_vkDevice, m_vkUniformBufferMemory, 0, sizeof(UniformBufferData), 0, &data);
 	UniformBufferData *uboData = static_cast<UniformBufferData *>(data);
-	uboData->tranformationMatrix = projectionMatrix * viewMatrix * modelMatrix;
+	uboData->tranformationMatrix[0] = projectionMatrix * viewMatrix * modelMatrix;
+	uboData->tranformationMatrix[1] = projectionMatrix * viewMatrix * modelMatrix2;
 	vkUnmapMemory(m_vkDevice, m_vkUniformBufferMemory);
 
 	angle += 1.0f;
@@ -995,10 +998,29 @@ void RenderDevice::createGraphicsPipeline()
 		print("created descriptor layout\n");
 	}
 
+	const VkPushConstantRange ranges[] =
+	{
+		{
+			VK_SHADER_STAGE_VERTEX_BIT,    // stageFlags
+			0,                                      // offset
+			4                                       // size
+		}
+/*
+		,
+		{
+			VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,  // stageFlags
+			4,                                      // offset
+			4                                       // size
+		},
+*/
+	};
+
 	VkPipelineLayoutCreateInfo layoutCreateInfo = {};
 	layoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 	layoutCreateInfo.setLayoutCount = 1;
 	layoutCreateInfo.pSetLayouts = &m_vkDescriptorSetLayout;
+	layoutCreateInfo.pushConstantRangeCount = 1;
+	layoutCreateInfo.pPushConstantRanges = ranges;
 
 	if (vkCreatePipelineLayout(m_vkDevice, &layoutCreateInfo, nullptr, &m_vkPipelineLayout) != VK_SUCCESS)
 	{
@@ -1197,7 +1219,11 @@ void RenderDevice::createCommandBuffers(Mesh *meshes, uint32_t numMeshes)
 
 		vkCmdBindIndexBuffer(m_vkCommandBuffers[i], m_indexBuffer->m_buffer, 0, VK_INDEX_TYPE_UINT32);
 
-		vkCmdDrawIndexed(m_vkCommandBuffers[i], meshes[0].m_renderables[0].m_indexCount, 1, 0, 0, 0);
+		for (uint32_t draw = 0; draw < 2; ++draw)
+		{
+			vkCmdPushConstants(m_vkCommandBuffers[i], m_vkPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, 4, &draw);
+			vkCmdDrawIndexed(m_vkCommandBuffers[i], meshes[draw].m_renderables[0].getIndexCount(), 1, meshes[draw].m_renderables[0].getFirstIndex(), meshes[draw].m_renderables[0].getFirstVertex(), 0);
+		}
 
 		vkCmdEndRenderPass(m_vkCommandBuffers[i]);
 
