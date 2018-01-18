@@ -984,11 +984,18 @@ void RenderDevice::createGraphicsPipeline()
 	VkDescriptorSetLayoutBinding samplerLayoutBinding = {};
 	samplerLayoutBinding.binding = 1;
 	samplerLayoutBinding.descriptorCount = 1;
-	samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
 	samplerLayoutBinding.pImmutableSamplers = nullptr;
 	samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-	VkDescriptorSetLayoutBinding bindings[] = { uboLayoutBinding, samplerLayoutBinding };
+	VkDescriptorSetLayoutBinding texturesLayoutBinding = {};
+	texturesLayoutBinding.binding = 2;
+	texturesLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	texturesLayoutBinding.descriptorCount = 2;
+	texturesLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	texturesLayoutBinding.pImmutableSamplers = nullptr;
+
+	VkDescriptorSetLayoutBinding bindings[] = { uboLayoutBinding, samplerLayoutBinding, texturesLayoutBinding };
 	VkDescriptorSetLayoutCreateInfo descriptorLayoutCreateInfo = {};
 	descriptorLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 	descriptorLayoutCreateInfo.bindingCount = sizeof(bindings) / sizeof(bindings[0]);
@@ -1007,7 +1014,7 @@ void RenderDevice::createGraphicsPipeline()
 	const VkPushConstantRange ranges[] =
 	{
 		{
-			VK_SHADER_STAGE_VERTEX_BIT,    // stageFlags
+			VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,    // stageFlags
 			0,                                      // offset
 			4                                       // size
 		}
@@ -1071,16 +1078,20 @@ void RenderDevice::createGraphicsPipeline()
 
 void RenderDevice::createDescriptorSet()
 {
-	VkDescriptorPoolSize poolSizes[2] = {};
+	VkDescriptorPoolSize poolSizes[4] = {};
 	poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	poolSizes[0].descriptorCount = 1;
-	poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	poolSizes[1].type = VK_DESCRIPTOR_TYPE_SAMPLER;
 	poolSizes[1].descriptorCount = 1;
+	poolSizes[2].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	poolSizes[2].descriptorCount = 1;
+	poolSizes[3].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	poolSizes[3].descriptorCount = 1;
 
 	VkDescriptorPoolCreateInfo createInfo = {};
 	createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	createInfo.poolSizeCount = 2;
-	createInfo.pPoolSizes = poolSizes;	// &typeCount;
+	createInfo.poolSizeCount = 4;
+	createInfo.pPoolSizes = poolSizes;
 	createInfo.maxSets = 1;
 
 	if (vkCreateDescriptorPool(m_vkDevice, &createInfo, nullptr, &m_vkDescriptorPool) != VK_SUCCESS)
@@ -1118,10 +1129,10 @@ void RenderDevice::createDescriptorSet()
 
 	VkDescriptorImageInfo imageInfo = {};
 	imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	imageInfo.imageView = m_vkTextureImageView;
+	imageInfo.imageView = VK_NULL_HANDLE;
 	imageInfo.sampler = m_vkSampler;
 
-	VkWriteDescriptorSet writeDescriptorSet[2] = {};
+	VkWriteDescriptorSet writeDescriptorSet[4] = {};
 	writeDescriptorSet[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	writeDescriptorSet[0].dstSet = m_vkDescriptorSet;
 	writeDescriptorSet[0].dstBinding = 0;
@@ -1134,11 +1145,37 @@ void RenderDevice::createDescriptorSet()
 	writeDescriptorSet[1].dstSet = m_vkDescriptorSet;
 	writeDescriptorSet[1].dstBinding = 1;
 	writeDescriptorSet[1].dstArrayElement = 0;
-	writeDescriptorSet[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	writeDescriptorSet[1].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
 	writeDescriptorSet[1].descriptorCount = 1;
 	writeDescriptorSet[1].pImageInfo = &imageInfo;
 
-	vkUpdateDescriptorSets(m_vkDevice, 2, writeDescriptorSet, 0, nullptr);
+	VkDescriptorImageInfo tex0ImageInfo = {};
+	tex0ImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	tex0ImageInfo.imageView = m_vkTextureImageView[0];
+	tex0ImageInfo.sampler = VK_NULL_HANDLE;
+
+	writeDescriptorSet[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	writeDescriptorSet[2].dstSet = m_vkDescriptorSet;
+	writeDescriptorSet[2].dstBinding = 2;
+	writeDescriptorSet[2].dstArrayElement = 0;
+	writeDescriptorSet[2].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	writeDescriptorSet[2].descriptorCount = 1;
+	writeDescriptorSet[2].pImageInfo = &tex0ImageInfo;
+
+	VkDescriptorImageInfo tex1ImageInfo = {};
+	tex1ImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	tex1ImageInfo.imageView = m_vkTextureImageView[1];
+	tex1ImageInfo.sampler = VK_NULL_HANDLE;
+
+	writeDescriptorSet[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	writeDescriptorSet[3].dstSet = m_vkDescriptorSet;
+	writeDescriptorSet[3].dstBinding = 2;
+	writeDescriptorSet[3].dstArrayElement = 1;
+	writeDescriptorSet[3].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	writeDescriptorSet[3].descriptorCount = 1;
+	writeDescriptorSet[3].pImageInfo = &tex1ImageInfo;
+
+	vkUpdateDescriptorSets(m_vkDevice, 4, writeDescriptorSet, 0, nullptr);
 }
 
 void RenderDevice::createCommandBuffers(Mesh *meshes, uint32_t numMeshes)
@@ -1227,7 +1264,7 @@ void RenderDevice::createCommandBuffers(Mesh *meshes, uint32_t numMeshes)
 
 		for (uint32_t draw = 0; draw < 2; ++draw)
 		{
-			vkCmdPushConstants(m_vkCommandBuffers[i], m_vkPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, 4, &draw);
+			vkCmdPushConstants(m_vkCommandBuffers[i], m_vkPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, 4, &draw);
 			vkCmdDrawIndexed(m_vkCommandBuffers[i], meshes[draw].m_renderables[0].getIndexCount(), 1, meshes[draw].m_renderables[0].getFirstIndex(), meshes[draw].m_renderables[0].getFirstVertex(), 0);
 		}
 
@@ -1390,6 +1427,7 @@ void RenderDevice::createTexture(const char *filename)
 		mipWidth /= 2;
 		mipHeight /= 2;
 	}
+	uint32_t texIndex = m_numTextures++;
 
 	VkImageCreateInfo  imageCreateInfo = {};
 	imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -1409,27 +1447,27 @@ void RenderDevice::createTexture(const char *filename)
 	imageCreateInfo.queueFamilyIndexCount = 0;
 	imageCreateInfo.pQueueFamilyIndices = nullptr;
 	imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	if (vkCreateImage(m_vkDevice, &imageCreateInfo, nullptr, &m_vkTextureImage) != VK_SUCCESS)
+	if (vkCreateImage(m_vkDevice, &imageCreateInfo, nullptr, &m_vkTextureImage[texIndex]) != VK_SUCCESS)
 	{
 		print("failed to create image for %s\n", filename);
 		exit(1);
 	}
 
 	VkMemoryRequirements memRequirements;
-	vkGetImageMemoryRequirements(m_vkDevice, m_vkTextureImage, &memRequirements);
+	vkGetImageMemoryRequirements(m_vkDevice, m_vkTextureImage[texIndex], &memRequirements);
 
 	VkMemoryAllocateInfo dstAllocInfo = {};
 	dstAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	dstAllocInfo.allocationSize = memRequirements.size;
 	getMemoryType(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, dstAllocInfo.memoryTypeIndex);
 
-	if (vkAllocateMemory(m_vkDevice, &dstAllocInfo, nullptr, &m_vkTextureImageMemory) != VK_SUCCESS)
+	if (vkAllocateMemory(m_vkDevice, &dstAllocInfo, nullptr, &m_vkTextureImageMemory[texIndex]) != VK_SUCCESS)
 	{
 		print("failed to allocate memory for image\n");
 		exit(1);
 	}
 
-	if (vkBindImageMemory(m_vkDevice, m_vkTextureImage, m_vkTextureImageMemory, 0) != VK_SUCCESS)
+	if (vkBindImageMemory(m_vkDevice, m_vkTextureImage[texIndex], m_vkTextureImageMemory[texIndex], 0) != VK_SUCCESS)
 	{
 		print("failed to bind memory to image\n");
 		exit(1);
@@ -1443,20 +1481,20 @@ void RenderDevice::createTexture(const char *filename)
 	subresourceRange.levelCount = mipMapCount;
 	subresourceRange.layerCount = 1;
 
-	transitionImageLayout(commandBuffer, m_vkTextureImage, subresourceRange, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	transitionImageLayout(commandBuffer, m_vkTextureImage[texIndex], subresourceRange, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 	// Copy mip levels from staging buffer
-	vkCmdCopyBufferToImage(commandBuffer, stagingBuffer.m_buffer, m_vkTextureImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipMapCount, bufferCopyRegions);
-	transitionImageLayout(commandBuffer, m_vkTextureImage, subresourceRange, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	vkCmdCopyBufferToImage(commandBuffer, stagingBuffer.m_buffer, m_vkTextureImage[texIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipMapCount, bufferCopyRegions);
+	transitionImageLayout(commandBuffer, m_vkTextureImage[texIndex], subresourceRange, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
 	endSingleUseCommandBuffer(commandBuffer);
 
 	VkImageViewCreateInfo viewInfo = {};
 	viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-	viewInfo.image = m_vkTextureImage;
+	viewInfo.image = m_vkTextureImage[texIndex];
 	viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
 	viewInfo.format = format;
 	viewInfo.subresourceRange = subresourceRange;
-	if (vkCreateImageView(m_vkDevice, &viewInfo, nullptr, &m_vkTextureImageView) != VK_SUCCESS)
+	if (vkCreateImageView(m_vkDevice, &viewInfo, nullptr, &m_vkTextureImageView[texIndex]) != VK_SUCCESS)
 	{
 		print("failed to create image view\n");
 		exit(EXIT_FAILURE);
