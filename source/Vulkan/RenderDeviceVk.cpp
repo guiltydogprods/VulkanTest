@@ -9,7 +9,7 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include "glm/gtx/transform.hpp"
 
-#define USE_SECONDARY_DEVICE
+//#define USE_SECONDARY_DEVICE
 
 const char* validationLayers[] = 
 {
@@ -66,6 +66,7 @@ RenderDevice::RenderDevice()
 	, m_vkSwapChainImageViews(nullptr)
 	, m_vkSwapChainFramebuffers(nullptr)
 	, m_vkCommandBuffers(nullptr)
+	, m_numTextures(0)
 {
 	Application* app = Application::GetApplication();
 
@@ -87,6 +88,7 @@ void RenderDevice::initialize(GLFWwindow *window)
 	createCommandPool();
 	createDepthBuffer();
 	createTexture("stone34.dds");
+	createTexture("rock7.dds");
 }
 
 void RenderDevice::finalize(Mesh *meshes, uint32_t numMeshes)
@@ -132,9 +134,13 @@ void RenderDevice::cleanup()
 		vkDestroyImageView(m_vkDevice, m_vkSwapChainImageViews[i], nullptr);
 	}
 	vkDestroySampler(m_vkDevice, m_vkSampler, nullptr);
-	vkDestroyImageView(m_vkDevice, m_vkTextureImageView, nullptr);
-	vkDestroyImage(m_vkDevice, m_vkTextureImage, nullptr);
-	vkFreeMemory(m_vkDevice, m_vkTextureImageMemory, nullptr);
+	for (uint32_t i = 0; i < m_numTextures; ++i)
+	{
+		uint32_t index = (m_numTextures - i)-1;
+		vkDestroyImageView(m_vkDevice, m_vkTextureImageView[index], nullptr);
+		vkDestroyImage(m_vkDevice, m_vkTextureImage[index], nullptr);
+		vkFreeMemory(m_vkDevice, m_vkTextureImageMemory[index], nullptr);
+	}
 	vkDestroyImageView(m_vkDevice, m_vkDepthBufferView, nullptr);
 	vkDestroyImage(m_vkDevice, m_vkDepthBufferImage, nullptr);
 	vkFreeMemory(m_vkDevice, m_vkDepthBufferMemory, nullptr);
@@ -163,9 +169,9 @@ void RenderDevice::update()
 	static float angle = 0.0f;
 
 	glm::vec3 axis(0.707f, 0.0f, 0.707f);
-	glm::vec3 axis2(0.0, 0.0f, 1.0f);
+	glm::vec3 axis2(-0.707f, 0.0f, -0.707f);
 	glm::mat4x4 modelMatrix = glm::translate(glm::vec3(-0.5f, 0.0f, 0.0f)) * glm::rotate(glm::radians(angle), axis);
-	glm::mat4x4 modelMatrix2 = glm::translate(glm::vec3(0.5f, 0.0f, 0.0f)) * glm::rotate(glm::radians(-angle), axis2);
+	glm::mat4x4 modelMatrix2 = glm::translate(glm::vec3(0.5f, 0.0f, 0.0f)) * glm::rotate(glm::radians(angle), axis2);
 
 	glm::vec3 eye(0.0f, 0.0f, 1.5f);
 	glm::vec3 at(0.0f, 0.0f, 0.0f);

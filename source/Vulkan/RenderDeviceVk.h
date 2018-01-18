@@ -103,10 +103,11 @@ struct RenderDevice
 	VkDeviceMemory						m_vkDepthBufferMemory;
 	VkImageView							m_vkDepthBufferView;
 
-	VkImage								m_vkTextureImage;
-	VkDeviceMemory						m_vkTextureImageMemory;
-	VkImageView							m_vkTextureImageView;
+	VkImage								m_vkTextureImage[2];
+	VkDeviceMemory						m_vkTextureImageMemory[2];
+	VkImageView							m_vkTextureImageView[2];
 	VkSampler							m_vkSampler;
+	uint32_t							m_numTextures;
 
 	Mesh								*m_meshes;
 	uint32_t							m_numMeshes;
