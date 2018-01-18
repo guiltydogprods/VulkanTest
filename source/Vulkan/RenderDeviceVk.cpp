@@ -9,7 +9,7 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include "glm/gtx/transform.hpp"
 
-//#define USE_SECONDARY_DEVICE
+#define USE_SECONDARY_DEVICE
 
 const char* validationLayers[] = 
 {
@@ -870,8 +870,8 @@ void RenderDevice::createFramebuffers()
 
 void RenderDevice::createGraphicsPipeline()
 {
-	VkShaderModule vertexShaderModule = createShaderModule("Shaders/shader.vert.spv");
-	VkShaderModule fragmentShaderModule = createShaderModule("Shaders/shader.frag.spv");
+	VkShaderModule vertexShaderModule = createShaderModule("shader.vert.spv");
+	VkShaderModule fragmentShaderModule = createShaderModule("shader.frag.spv");
 
 	VkPipelineShaderStageCreateInfo vertexShaderCreateInfo = {};
 	vertexShaderCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -1275,7 +1275,7 @@ VkBool32 RenderDevice::getMemoryType(uint32_t typeBits, VkMemoryPropertyFlags pr
 
 VkShaderModule RenderDevice::createShaderModule(const char *filename)
 {
-	File file(filename);
+	File file(filename, "Shaders/");
 
 	VkShaderModuleCreateInfo createInfo = {};
 	createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;

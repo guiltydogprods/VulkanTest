@@ -1,12 +1,12 @@
 #include "stdafx.h"
 #include "File.h"
 
-File::File(const char *filename)
+File::File(const char *filename, const char *folder)
 	: m_buffer(nullptr)
 	, m_sizeInBytes(0)
 {
 	char pathname[4096];
-	strcpy_s(pathname, sizeof(pathname), "assets/");
+	strcpy_s(pathname, sizeof(pathname), folder);
 	strcat_s(pathname, sizeof(pathname), filename);
 
 	FILE *fptr = nullptr;

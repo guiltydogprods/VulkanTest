@@ -57,8 +57,10 @@ filter 'files:**.vert or files:**.frag'
 
    -- One or more commands to run (required)
    buildcommands {
-      'glslangValidator -V -o "../assets/Shaders/%{file.basename}%{file.extension}.spv" "%{file.relpath}"'
+   --   'glslangValidator -V -o "%{file.basename}%{file.extension}.spv" "%{file.relpath}"'
+      'glslangValidator -V -o "%{file.relpath}.spv" "%{file.relpath}"'
    }
 
    -- One or more outputs resulting from the build (required)
-   buildoutputs { '../assets/Shaders/%{file.basename}%{file.extension}.spv' }
+   --buildoutputs { '%{file.basename}%{file.extension}.spv' }
+   buildoutputs { '%{file.relpath}.spv' }
