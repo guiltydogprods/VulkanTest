@@ -1085,12 +1085,10 @@ void RenderDevice::createDescriptorSet()
 	poolSizes[1].descriptorCount = 1;
 	poolSizes[2].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 	poolSizes[2].descriptorCount = 1;
-	poolSizes[3].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-	poolSizes[3].descriptorCount = 1;
 
 	VkDescriptorPoolCreateInfo createInfo = {};
 	createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	createInfo.poolSizeCount = 4;
+	createInfo.poolSizeCount = 3;
 	createInfo.pPoolSizes = poolSizes;
 	createInfo.maxSets = 1;
 
@@ -1149,33 +1147,28 @@ void RenderDevice::createDescriptorSet()
 	writeDescriptorSet[1].descriptorCount = 1;
 	writeDescriptorSet[1].pImageInfo = &imageInfo;
 
-	VkDescriptorImageInfo tex0ImageInfo = {};
-	tex0ImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	tex0ImageInfo.imageView = m_vkTextureImageView[0];
-	tex0ImageInfo.sampler = VK_NULL_HANDLE;
+	VkDescriptorImageInfo *texImageInfo = static_cast<VkDescriptorImageInfo *>(alloca(sizeof(VkDescriptorImageInfo) * m_numTextures));
+	memset(texImageInfo, 0, sizeof(VkDescriptorImageInfo) * m_numTextures);
 
-	writeDescriptorSet[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	writeDescriptorSet[2].dstSet = m_vkDescriptorSet;
-	writeDescriptorSet[2].dstBinding = 2;
-	writeDescriptorSet[2].dstArrayElement = 0;
-	writeDescriptorSet[2].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-	writeDescriptorSet[2].descriptorCount = 1;
-	writeDescriptorSet[2].pImageInfo = &tex0ImageInfo;
+	for (uint32_t i = 0; i < m_numTextures; i++)
+	{
+		texImageInfo[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		texImageInfo[i].imageView = m_vkTextureImageView[i];
+		texImageInfo[i].sampler = VK_NULL_HANDLE;
+	}
 
-	VkDescriptorImageInfo tex1ImageInfo = {};
-	tex1ImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	tex1ImageInfo.imageView = m_vkTextureImageView[1];
-	tex1ImageInfo.sampler = VK_NULL_HANDLE;
-
-	writeDescriptorSet[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	writeDescriptorSet[3].dstSet = m_vkDescriptorSet;
-	writeDescriptorSet[3].dstBinding = 2;
-	writeDescriptorSet[3].dstArrayElement = 1;
-	writeDescriptorSet[3].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-	writeDescriptorSet[3].descriptorCount = 1;
-	writeDescriptorSet[3].pImageInfo = &tex1ImageInfo;
-
-	vkUpdateDescriptorSets(m_vkDevice, 4, writeDescriptorSet, 0, nullptr);
+	for (uint32_t i = 0; i < m_numTextures; i++)
+	{
+		uint32_t di = 2 + i;
+		writeDescriptorSet[di].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		writeDescriptorSet[di].dstSet = m_vkDescriptorSet;
+		writeDescriptorSet[di].dstBinding = 2;
+		writeDescriptorSet[di].dstArrayElement = i;
+		writeDescriptorSet[di].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+		writeDescriptorSet[di].descriptorCount = 1;
+		writeDescriptorSet[di].pImageInfo = &texImageInfo[i];
+	}
+	vkUpdateDescriptorSets(m_vkDevice, 2+m_numTextures, writeDescriptorSet, 0, nullptr);
 }
 
 void RenderDevice::createCommandBuffers(Mesh *meshes, uint32_t numMeshes)
