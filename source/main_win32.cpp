@@ -14,8 +14,16 @@ static void size_callback(GLFWwindow* window, int width, int height)
 {
 	if (width == 0 || height == 0) return;
 
-	RenderDevice *renderDevice = static_cast<RenderDevice *>(glfwGetWindowUserPointer(window));
-		renderDevice->recreateSwapChain();
+	Application *app = static_cast<Application *>(glfwGetWindowUserPointer(window));
+	if (app)
+	{
+		RenderDevice& rd = app->getRenderDevice();
+		rd.recreateSwapChain();
+		app->resize(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
+	}
+
+//	RenderDevice *renderDevice = static_cast<RenderDevice *>(glfwGetWindowUserPointer(window));
+//		renderDevice->recreateSwapChain();
 }
 
 int main(int argc, char *argv[])
@@ -34,7 +42,7 @@ int main(int argc, char *argv[])
 	app->setGLFWwindow(window);
 	app->initialize();
 
-	glfwSetWindowUserPointer(window, &app->getRenderDevice());
+	glfwSetWindowUserPointer(window, app);
 	glfwSetKeyCallback(window, key_callback);
 	glfwSetWindowSizeCallback(window, size_callback);
 

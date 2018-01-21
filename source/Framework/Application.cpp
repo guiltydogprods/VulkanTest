@@ -34,3 +34,7 @@ void Application::render()
 {
 
 }
+
+void Application::resize(uint32_t width, uint32_t height)
+{
+}

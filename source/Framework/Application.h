@@ -14,6 +14,7 @@ public:
 	virtual void cleanup();
 	virtual void update();
 	virtual void render();
+	virtual void resize(uint32_t width, uint32_t height);
 
 	inline const char *getApplicationName()				{ return m_appName;				}
 	inline uint32_t getScreenWidth()					{ return m_screenWidth;			}

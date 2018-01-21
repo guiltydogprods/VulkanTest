@@ -12,9 +12,9 @@ public:
 	void initialize();
 	void update();
 	void render();
+	void resize(uint32_t width, uint32_t height);
 
 protected:
-//	RenderDevice *m_pRenderDevice;
 	Mesh *m_meshes;
 
 	uint32_t m_numMeshes;

@@ -67,3 +67,10 @@ void ThunderBallApp::render()
 {
 	m_pRenderDevice->render();
 }
+
+void ThunderBallApp::resize(uint32_t width, uint32_t height)
+{
+	m_pRenderDevice->recreateSwapChain();
+	m_screenWidth = width;
+	m_screenHeight = height;
+}
