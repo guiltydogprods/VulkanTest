@@ -9,7 +9,7 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include "glm/gtx/transform.hpp"
 
-#define USE_SECONDARY_DEVICE
+//#define USE_SECONDARY_DEVICE
 
 const char* validationLayers[] = 
 {
