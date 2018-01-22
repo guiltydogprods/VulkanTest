@@ -9,7 +9,7 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include "glm/gtx/transform.hpp"
 
-//#define USE_SECONDARY_DEVICE
+#define USE_SECONDARY_DEVICE
 
 const char* validationLayers[] = 
 {
@@ -1084,7 +1084,7 @@ void RenderDevice::createDescriptorSet()
 	poolSizes[1].type = VK_DESCRIPTOR_TYPE_SAMPLER;
 	poolSizes[1].descriptorCount = 1;
 	poolSizes[2].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-	poolSizes[2].descriptorCount = 1;
+	poolSizes[2].descriptorCount = 2;
 
 	VkDescriptorPoolCreateInfo createInfo = {};
 	createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
