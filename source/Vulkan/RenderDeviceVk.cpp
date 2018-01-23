@@ -120,6 +120,10 @@ void RenderDevice::cleanupSwapChain()
 	vkDestroyPipeline(m_vkDevice, m_vkGraphicsPipeline, nullptr);
 	vkDestroyRenderPass(m_vkDevice, m_vkRenderPass, nullptr);
 
+	vkDestroyImageView(m_vkDevice, m_vkDepthBufferView, nullptr);
+	vkDestroyImage(m_vkDevice, m_vkDepthBufferImage, nullptr);
+	vkFreeMemory(m_vkDevice, m_vkDepthBufferMemory, nullptr);
+
 	vkDestroySwapchainKHR(m_vkDevice, m_vkSwapChain, nullptr);
 }
 
