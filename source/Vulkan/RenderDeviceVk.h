@@ -32,7 +32,6 @@ struct RenderDevice
 	void createDescriptorSet();
 	void createCommandBuffers(Mesh *meshes, uint32_t numMeshes);
 
-
 	VkBool32 getMemoryType(uint32_t typeBits, VkFlags properties, uint32_t& typeIndex);
 
 	VkShaderModule createShaderModule(const char *filename);
@@ -93,7 +92,6 @@ struct RenderDevice
 
 	VkDescriptorPool					m_vkDescriptorPool;
 	VkDescriptorSet						m_vkDescriptorSet;
-
 
 	VkCommandPool						m_vkCommandPool;
 	VkCommandBuffer						*m_vkCommandBuffers;
