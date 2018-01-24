@@ -562,11 +562,11 @@ void RenderDevice::createDepthBuffer()
 
 	VkMemoryRequirements memRequirements;
 	vkGetImageMemoryRequirements(m_vkDevice, m_vkDepthBufferImage, &memRequirements);
-
 	VkMemoryAllocateInfo allocInfo = {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	allocInfo.allocationSize = memRequirements.size;
 	getMemoryType(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, allocInfo.memoryTypeIndex);
+	print("Depth Buffer memory requirements: size = %lld, alignment = %lld, typeBits = 0x%x, typeIndex = %d\n", memRequirements.size, memRequirements.alignment, memRequirements.memoryTypeBits, allocInfo.memoryTypeIndex);
 	if (vkAllocateMemory(m_vkDevice, &allocInfo, nullptr, &m_vkDepthBufferMemory) != VK_SUCCESS)
 	{
 		print("failed to allocate memory for image\n");
@@ -693,6 +693,7 @@ void RenderDevice::createUniformBuffer()
 	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	allocInfo.allocationSize = memReqs.size;
 	getMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, allocInfo.memoryTypeIndex);
+	print("Uniform Buffer memory requirements: size = %lld, alignment = %lld, typeBits = 0x%x, typeIndex = %d\n", memReqs.size, memReqs.alignment, memReqs.memoryTypeBits, allocInfo.memoryTypeIndex);
 
 	vkAllocateMemory(m_vkDevice, &allocInfo, nullptr, &m_vkUniformBufferMemory);
 	vkBindBufferMemory(m_vkDevice, m_vkUniformBuffer, m_vkUniformBufferMemory, 0);
@@ -1309,7 +1310,7 @@ VkBool32 RenderDevice::getMemoryType(uint32_t typeBits, VkMemoryPropertyFlags pr
 		if ((typeBits & (1 << i)) && ((deviceMemoryProperties.memoryTypes[i].propertyFlags & properties) == properties))
 		{
 			typeIndex = i;
-			print("typeBits: 0x%x, properties: 0x%x, typeIndex = %d\n", typeBits, properties, typeIndex);
+//			print("typeBits: 0x%x, properties: 0x%x, typeIndex = %d\n", typeBits, properties, typeIndex);
 			return true;
 		}
 	}
@@ -1461,6 +1462,7 @@ void RenderDevice::createTexture(const char *filename)
 	dstAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	dstAllocInfo.allocationSize = memRequirements.size;
 	getMemoryType(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, dstAllocInfo.memoryTypeIndex);
+	print("Texture memory requirements: size = %lld, alignment = %lld, typeBits = 0x%x, typeIndex = %d\n", memRequirements.size, memRequirements.alignment, memRequirements.memoryTypeBits, dstAllocInfo.memoryTypeIndex);
 
 	if (vkAllocateMemory(m_vkDevice, &dstAllocInfo, nullptr, &m_vkTextureImageMemory[texIndex]) != VK_SUCCESS)
 	{
@@ -1672,12 +1674,14 @@ Buffer::Buffer(RenderDevice& renderDevice, VkDeviceSize size, VkBufferUsageFlags
 
 	VkMemoryRequirements memReqs;
 	vkGetBufferMemoryRequirements(m_vkDevice, m_buffer, &memReqs);
+
 	m_allocatedSize = memReqs.size;
 
 	VkMemoryAllocateInfo memAlloc = {};
 	memAlloc.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	memAlloc.allocationSize = memReqs.size;
 	renderDevice.getMemoryType(memReqs.memoryTypeBits, memoryPropertyFlags, memAlloc.memoryTypeIndex);
+	print("Buffer memory requirements: size = %lld, alignment = %lld, typeBits = 0x%x, typeIndex = %d\n", memReqs.size, memReqs.alignment, memReqs.memoryTypeBits, memAlloc.memoryTypeIndex);
 	vkAllocateMemory(m_vkDevice, &memAlloc, nullptr, &m_memory);
 }
 
