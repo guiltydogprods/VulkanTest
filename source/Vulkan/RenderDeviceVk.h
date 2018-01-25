@@ -116,6 +116,19 @@ struct Buffer
 	Buffer(RenderDevice& renderDevice, VkDeviceSize size, VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags);
 	~Buffer();
 
+	void bindMemory();
+
+	VkDevice&		m_vkDevice;
+	VkBuffer		m_buffer;
+	VkDeviceMemory	m_memory;
+	VkDeviceSize	m_allocatedSize;
+};
+
+struct StagingBuffer
+{
+	StagingBuffer(RenderDevice& renderDevice, VkDeviceSize size, VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags);
+	~StagingBuffer();
+
 	void *mapMemory(VkDeviceSize offset = 0, VkDeviceSize size = VK_WHOLE_SIZE);
 	void unmapMemory();
 	void bindMemory();

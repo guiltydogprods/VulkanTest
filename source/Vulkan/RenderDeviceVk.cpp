@@ -9,7 +9,7 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include "glm/gtx/transform.hpp"
 
-//#define USE_SECONDARY_DEVICE
+#define USE_SECONDARY_DEVICE
 
 const char* validationLayers[] = 
 {
@@ -1396,7 +1396,7 @@ void RenderDevice::createTexture(const char *filename)
 	uint32_t blockSize = (format == VK_FORMAT_BC1_RGB_UNORM_BLOCK || format == VK_FORMAT_BC1_RGBA_UNORM_BLOCK) ? 8 : 16;
 	uint64_t size = file.m_sizeInBytes - 128;
 
-	Buffer stagingBuffer(*this, size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+	StagingBuffer stagingBuffer(*this, size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 	
 	uint8_t *data = static_cast<uint8_t *>(stagingBuffer.mapMemory());
 	if (data)
@@ -1691,7 +1691,55 @@ Buffer::~Buffer()
 	vkFreeMemory(m_vkDevice, m_memory, nullptr);
 }
 
-void *Buffer::mapMemory(VkDeviceSize offset, VkDeviceSize size)
+void Buffer::bindMemory()
+{
+	VkResult res = vkBindBufferMemory(m_vkDevice, m_buffer, m_memory, 0);
+	AssertMsg(res == VK_SUCCESS, "vkBindBuffer failed (res = %d).", static_cast<int32_t>(res));
+}
+
+StagingBuffer::StagingBuffer(RenderDevice& renderDevice, VkDeviceSize size, VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags)
+	: m_vkDevice(renderDevice.m_vkDevice)
+	, m_buffer(nullptr)
+	, m_memory(nullptr)
+	, m_allocatedSize(0)
+{
+//	usageFlags &= ~(VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+//	memoryPropertyFlags |= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+	AssertMsg((size > 0), "StagingBuffer size is 0 bytes.\n");
+	AssertMsg((usageFlags & (VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT)) != 0, "StagingBuffer requires either VK_BUFFER_USAGE_TRANSFER_SRC_BIT or VK_BUFFER_USAGE_TRANSFRER_DST_BIT to be set.\n");
+	AssertMsg((memoryPropertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) == 0, "StagingBuffer can not be created have VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT set.\n");
+	memoryPropertyFlags |= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT; // Must be set for staging buffer.
+
+	m_vkDevice = renderDevice.m_vkDevice;
+
+	VkBufferCreateInfo vertexBufferInfo = {};
+	vertexBufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO; 
+	vertexBufferInfo.size = size;
+	vertexBufferInfo.usage = usageFlags;
+	vertexBufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+	vkCreateBuffer(m_vkDevice, &vertexBufferInfo, nullptr, &m_buffer);
+
+	VkMemoryRequirements memReqs;
+	vkGetBufferMemoryRequirements(m_vkDevice, m_buffer, &memReqs);
+
+	m_allocatedSize = memReqs.size;
+
+	VkMemoryAllocateInfo memAlloc = {};
+	memAlloc.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	memAlloc.allocationSize = memReqs.size;
+	renderDevice.getMemoryType(memReqs.memoryTypeBits, memoryPropertyFlags, memAlloc.memoryTypeIndex);
+	print("Buffer memory requirements: size = %lld, alignment = %lld, typeBits = 0x%x, typeIndex = %d\n", memReqs.size, memReqs.alignment, memReqs.memoryTypeBits, memAlloc.memoryTypeIndex);
+	vkAllocateMemory(m_vkDevice, &memAlloc, nullptr, &m_memory);
+}
+
+StagingBuffer::~StagingBuffer()
+{
+	vkDestroyBuffer(m_vkDevice, m_buffer, nullptr);
+	vkFreeMemory(m_vkDevice, m_memory, nullptr);
+}
+
+void *StagingBuffer::mapMemory(VkDeviceSize offset, VkDeviceSize size)
 {
 	void *data = nullptr;
 	VkResult res = vkMapMemory(m_vkDevice, m_memory, offset, size, 0, &data);
@@ -1699,13 +1747,14 @@ void *Buffer::mapMemory(VkDeviceSize offset, VkDeviceSize size)
 	return data;
 }
 
-void Buffer::unmapMemory()
+void StagingBuffer::unmapMemory()
 {
 	vkUnmapMemory(m_vkDevice, m_memory);
 }
 
-void Buffer::bindMemory()
+void StagingBuffer::bindMemory()
 {
 	VkResult res = vkBindBufferMemory(m_vkDevice, m_buffer, m_memory, 0);
 	AssertMsg(res == VK_SUCCESS, "vkBindBuffer failed (res = %d).", static_cast<int32_t>(res));
 }
+
