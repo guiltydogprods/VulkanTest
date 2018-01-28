@@ -9,7 +9,7 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include "glm/gtx/transform.hpp"
 
-#define USE_SECONDARY_DEVICE
+//#define USE_SECONDARY_DEVICE
 
 const char* validationLayers[] = 
 {
@@ -123,7 +123,7 @@ void RenderDevice::cleanupSwapChain()
 
 	vkDestroyImageView(m_vkDevice, m_vkDepthBufferView, nullptr);
 	vkDestroyImage(m_vkDevice, m_vkDepthBufferImage, nullptr);
-	vkFreeMemory(m_vkDevice, m_vkDepthBufferMemory, nullptr);
+	vkFreeMemory(m_vkDevice, m_depthBufferMemAllocInfo.memoryBlock, nullptr);
 
 	vkDestroySwapchainKHR(m_vkDevice, m_vkSwapChain, nullptr);
 }
@@ -147,15 +147,15 @@ void RenderDevice::cleanup()
 		uint32_t index = (m_numTextures - i)-1;
 		vkDestroyImageView(m_vkDevice, m_vkTextureImageView[index], nullptr);
 		vkDestroyImage(m_vkDevice, m_vkTextureImage[index], nullptr);
-		vkFreeMemory(m_vkDevice, m_vkTextureImageMemory[index], nullptr);
+		vkFreeMemory(m_vkDevice, m_textureMemAllocInfo[index].memoryBlock, nullptr);
 	}
 	vkDestroyImageView(m_vkDevice, m_vkDepthBufferView, nullptr);
 	vkDestroyImage(m_vkDevice, m_vkDepthBufferImage, nullptr);
-	vkFreeMemory(m_vkDevice, m_vkDepthBufferMemory, nullptr);
+	vkFreeMemory(m_vkDevice, m_depthBufferMemAllocInfo.memoryBlock, nullptr);
 	vkDestroySwapchainKHR(m_vkDevice, m_vkSwapChain, nullptr);
 	vkDestroyCommandPool(m_vkDevice, m_vkCommandPool, nullptr);
 	vkDestroyBuffer(m_vkDevice, m_vkUniformBuffer, nullptr);
-	vkFreeMemory(m_vkDevice, m_vkUniformBufferMemory, nullptr);
+	vkFreeMemory(m_vkDevice, m_uniformBufferMemAllocInfo.memoryBlock, nullptr);
 	delete m_indexBuffer;
 	m_indexBuffer = nullptr;
 	delete m_vertexBuffer;
@@ -202,11 +202,11 @@ void RenderDevice::update()
 	glm::mat4x4 projectionMatrix = glm::frustum(left, right, bottom, top, nearZ, farZ);
 
 	void *data;
-	vkMapMemory(m_vkDevice, m_vkUniformBufferMemory, 0, sizeof(UniformBufferData), 0, &data);
+	vkMapMemory(m_vkDevice, m_uniformBufferMemAllocInfo.memoryBlock, m_uniformBufferMemAllocInfo.offset, sizeof(UniformBufferData), 0, &data);
 	UniformBufferData *uboData = static_cast<UniformBufferData *>(data);
 	uboData->tranformationMatrix[0] = projectionMatrix * viewMatrix * modelMatrix;
 	uboData->tranformationMatrix[1] = projectionMatrix * viewMatrix * modelMatrix2;
-	vkUnmapMemory(m_vkDevice, m_vkUniformBufferMemory);
+	vkUnmapMemory(m_vkDevice, m_uniformBufferMemAllocInfo.memoryBlock);
 
 	angle += 1.0f;
 	if (angle > 360.0f)
@@ -562,18 +562,9 @@ void RenderDevice::createDepthBuffer()
 
 	VkMemoryRequirements memRequirements;
 	vkGetImageMemoryRequirements(m_vkDevice, m_vkDepthBufferImage, &memRequirements);
-	VkMemoryAllocateInfo allocInfo = {};
-	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	allocInfo.allocationSize = memRequirements.size;
-	getMemoryType(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, allocInfo.memoryTypeIndex);
-	print("Depth Buffer memory requirements: size = %lld, alignment = %lld, typeBits = 0x%x, typeIndex = %d\n", memRequirements.size, memRequirements.alignment, memRequirements.memoryTypeBits, allocInfo.memoryTypeIndex);
-	if (vkAllocateMemory(m_vkDevice, &allocInfo, nullptr, &m_vkDepthBufferMemory) != VK_SUCCESS)
-	{
-		print("failed to allocate memory for image\n");
-		exit(1);
-	}
-
-	if (vkBindImageMemory(m_vkDevice, m_vkDepthBufferImage, m_vkDepthBufferMemory, 0) != VK_SUCCESS)
+	uint32_t memoryTypeIndex = getMemoryType(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	m_depthBufferMemAllocInfo = allocateGpuMemory(memRequirements.size, memRequirements.alignment, memoryTypeIndex);
+	if (vkBindImageMemory(m_vkDevice, m_vkDepthBufferImage, m_depthBufferMemAllocInfo.memoryBlock, m_depthBufferMemAllocInfo.offset) != VK_SUCCESS)
 	{
 		print("failed to bind memory to image\n");
 		exit(1);
@@ -689,14 +680,9 @@ void RenderDevice::createUniformBuffer()
 	VkMemoryRequirements memReqs;
 	vkGetBufferMemoryRequirements(m_vkDevice, m_vkUniformBuffer, &memReqs);
 
-	VkMemoryAllocateInfo allocInfo = {};
-	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	allocInfo.allocationSize = memReqs.size;
-	getMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, allocInfo.memoryTypeIndex);
-	print("Uniform Buffer memory requirements: size = %lld, alignment = %lld, typeBits = 0x%x, typeIndex = %d\n", memReqs.size, memReqs.alignment, memReqs.memoryTypeBits, allocInfo.memoryTypeIndex);
-
-	vkAllocateMemory(m_vkDevice, &allocInfo, nullptr, &m_vkUniformBufferMemory);
-	vkBindBufferMemory(m_vkDevice, m_vkUniformBuffer, m_vkUniformBufferMemory, 0);
+	uint32_t memoryTypeIndex = getMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);	// , allocInfo.memoryTypeIndex);
+	m_uniformBufferMemAllocInfo = allocateGpuMemory(memReqs.size, memReqs.alignment, memoryTypeIndex);
+	vkBindBufferMemory(m_vkDevice, m_vkUniformBuffer, m_uniformBufferMemAllocInfo.memoryBlock, m_uniformBufferMemAllocInfo.offset);
 }
 
 void RenderDevice::createSwapChain()
@@ -1301,7 +1287,11 @@ void RenderDevice::createCommandBuffers(Mesh *meshes, uint32_t numMeshes)
 	vkDestroyPipelineLayout(m_vkDevice, m_vkPipelineLayout, nullptr);
 }
 
-VkBool32 RenderDevice::getMemoryType(uint32_t typeBits, VkMemoryPropertyFlags properties, uint32_t& typeIndex)
+//1001 0000
+//1000 0010
+//0110 1000 0001
+
+int32_t RenderDevice::getMemoryType(uint32_t typeBits, VkMemoryPropertyFlags properties)	//, uint32_t& typeIndex)
 {
 	VkPhysicalDeviceMemoryProperties& deviceMemoryProperties = m_vkPhysicalDeviceMemoryProperties[m_selectedDevice];
 
@@ -1309,13 +1299,25 @@ VkBool32 RenderDevice::getMemoryType(uint32_t typeBits, VkMemoryPropertyFlags pr
 	{
 		if ((typeBits & (1 << i)) && ((deviceMemoryProperties.memoryTypes[i].propertyFlags & properties) == properties))
 		{
-			typeIndex = i;
-//			print("typeBits: 0x%x, properties: 0x%x, typeIndex = %d\n", typeBits, properties, typeIndex);
-			return true;
+			return i;
 		}
 	}
 	print("Could not find memory type to satisfy requirements\n");
-	return false;
+	return -1;
+}
+
+MemAllocInfo RenderDevice::allocateGpuMemory(VkDeviceSize size, VkDeviceSize alignment, uint32_t typeIndex)
+{
+	VkMemoryAllocateInfo allocInfo = {};
+	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	allocInfo.allocationSize = size;
+	allocInfo.memoryTypeIndex = typeIndex;
+	MemAllocInfo memoryInfo = {};
+	memoryInfo.offset = 0;
+	VkResult res = vkAllocateMemory(m_vkDevice, &allocInfo, nullptr, &memoryInfo.memoryBlock);	// &m_vkDepthBufferMemory);
+	AssertMsg(res == VK_SUCCESS, "failed to allocate memory for image\n");
+
+	return memoryInfo;
 }
 
 VkShaderModule RenderDevice::createShaderModule(const char *filename)
@@ -1458,19 +1460,9 @@ void RenderDevice::createTexture(const char *filename)
 	VkMemoryRequirements memRequirements;
 	vkGetImageMemoryRequirements(m_vkDevice, m_vkTextureImage[texIndex], &memRequirements);
 
-	VkMemoryAllocateInfo dstAllocInfo = {};
-	dstAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	dstAllocInfo.allocationSize = memRequirements.size;
-	getMemoryType(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, dstAllocInfo.memoryTypeIndex);
-	print("Texture memory requirements: size = %lld, alignment = %lld, typeBits = 0x%x, typeIndex = %d\n", memRequirements.size, memRequirements.alignment, memRequirements.memoryTypeBits, dstAllocInfo.memoryTypeIndex);
-
-	if (vkAllocateMemory(m_vkDevice, &dstAllocInfo, nullptr, &m_vkTextureImageMemory[texIndex]) != VK_SUCCESS)
-	{
-		print("failed to allocate memory for image\n");
-		exit(1);
-	}
-
-	if (vkBindImageMemory(m_vkDevice, m_vkTextureImage[texIndex], m_vkTextureImageMemory[texIndex], 0) != VK_SUCCESS)
+	uint32_t memoryTypeIndex = getMemoryType(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);	// , dstAllocInfo.memoryTypeIndex);
+	m_textureMemAllocInfo[texIndex] = allocateGpuMemory(memRequirements.size, memRequirements.alignment, memoryTypeIndex);
+	if (vkBindImageMemory(m_vkDevice, m_vkTextureImage[texIndex], m_textureMemAllocInfo[texIndex].memoryBlock, m_textureMemAllocInfo[texIndex].offset) != VK_SUCCESS)
 	{
 		print("failed to bind memory to image\n");
 		exit(1);
@@ -1631,8 +1623,6 @@ void RenderDevice::transitionImageLayout(VkCommandBuffer commandBuffer, VkImage 
 		print("unsupported layout transition!\n");
 		exit(1);
 	}
-	
-//	vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 	vkCmdPipelineBarrier(commandBuffer, sourceStage, destinationStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 }
 
@@ -1659,11 +1649,9 @@ void RenderDevice::copyImage(VkCommandBuffer commandBuffer, VkImage srcImage, Vk
 Buffer::Buffer(RenderDevice& renderDevice, VkDeviceSize size, VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags)
 	: m_vkDevice(renderDevice.m_vkDevice)
 	, m_buffer(nullptr)
-	, m_memory(nullptr)
+	, m_memAllocInfo{nullptr, 0}
 	, m_allocatedSize(0)
 {
-	m_vkDevice = renderDevice.m_vkDevice;
-
 	VkBufferCreateInfo vertexBufferInfo = {};
 	vertexBufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	vertexBufferInfo.size = size;
@@ -1677,38 +1665,29 @@ Buffer::Buffer(RenderDevice& renderDevice, VkDeviceSize size, VkBufferUsageFlags
 
 	m_allocatedSize = memReqs.size;
 
-	VkMemoryAllocateInfo memAlloc = {};
-	memAlloc.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	memAlloc.allocationSize = memReqs.size;
-	renderDevice.getMemoryType(memReqs.memoryTypeBits, memoryPropertyFlags, memAlloc.memoryTypeIndex);
-	print("Buffer memory requirements: size = %lld, alignment = %lld, typeBits = 0x%x, typeIndex = %d\n", memReqs.size, memReqs.alignment, memReqs.memoryTypeBits, memAlloc.memoryTypeIndex);
-	vkAllocateMemory(m_vkDevice, &memAlloc, nullptr, &m_memory);
+	uint32_t memoryTypeIndex = renderDevice.getMemoryType(memReqs.memoryTypeBits, memoryPropertyFlags);	// , memAlloc.memoryTypeIndex);
+	m_memAllocInfo = renderDevice.allocateGpuMemory(memReqs.size, memReqs.alignment, memoryTypeIndex);
 }
 
 Buffer::~Buffer()
 {
 	vkDestroyBuffer(m_vkDevice, m_buffer, nullptr);
-	vkFreeMemory(m_vkDevice, m_memory, nullptr);
+	vkFreeMemory(m_vkDevice, m_memAllocInfo.memoryBlock, nullptr);
 }
 
 void Buffer::bindMemory()
 {
-	VkResult res = vkBindBufferMemory(m_vkDevice, m_buffer, m_memory, 0);
+	VkResult res = vkBindBufferMemory(m_vkDevice, m_buffer, m_memAllocInfo.memoryBlock, m_memAllocInfo.offset);
 	AssertMsg(res == VK_SUCCESS, "vkBindBuffer failed (res = %d).", static_cast<int32_t>(res));
 }
 
 StagingBuffer::StagingBuffer(RenderDevice& renderDevice, VkDeviceSize size, VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags)
-	: m_vkDevice(renderDevice.m_vkDevice)
-	, m_buffer(nullptr)
-	, m_memory(nullptr)
-	, m_allocatedSize(0)
+	: Buffer(renderDevice)
 {
-//	usageFlags &= ~(VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
-//	memoryPropertyFlags |= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 	AssertMsg((size > 0), "StagingBuffer size is 0 bytes.\n");
 	AssertMsg((usageFlags & (VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT)) != 0, "StagingBuffer requires either VK_BUFFER_USAGE_TRANSFER_SRC_BIT or VK_BUFFER_USAGE_TRANSFRER_DST_BIT to be set.\n");
 	AssertMsg((memoryPropertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) == 0, "StagingBuffer can not be created have VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT set.\n");
-	memoryPropertyFlags |= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT; // Must be set for staging buffer.
+	memoryPropertyFlags |= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT; // Must be set for staging buffer so set it here just in case.
 
 	m_vkDevice = renderDevice.m_vkDevice;
 
@@ -1725,36 +1704,31 @@ StagingBuffer::StagingBuffer(RenderDevice& renderDevice, VkDeviceSize size, VkBu
 
 	m_allocatedSize = memReqs.size;
 
-	VkMemoryAllocateInfo memAlloc = {};
-	memAlloc.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	memAlloc.allocationSize = memReqs.size;
-	renderDevice.getMemoryType(memReqs.memoryTypeBits, memoryPropertyFlags, memAlloc.memoryTypeIndex);
-	print("Buffer memory requirements: size = %lld, alignment = %lld, typeBits = 0x%x, typeIndex = %d\n", memReqs.size, memReqs.alignment, memReqs.memoryTypeBits, memAlloc.memoryTypeIndex);
-	vkAllocateMemory(m_vkDevice, &memAlloc, nullptr, &m_memory);
+	uint32_t memoryTypeIndex = renderDevice.getMemoryType(memReqs.memoryTypeBits, memoryPropertyFlags);	// , memAlloc.memoryTypeIndex);
+	m_memAllocInfo = renderDevice.allocateGpuMemory(memReqs.size, memReqs.alignment, memoryTypeIndex);
 }
 
 StagingBuffer::~StagingBuffer()
 {
-	vkDestroyBuffer(m_vkDevice, m_buffer, nullptr);
-	vkFreeMemory(m_vkDevice, m_memory, nullptr);
+	// Vulkan resources destroyed in base.
 }
 
 void *StagingBuffer::mapMemory(VkDeviceSize offset, VkDeviceSize size)
 {
 	void *data = nullptr;
-	VkResult res = vkMapMemory(m_vkDevice, m_memory, offset, size, 0, &data);
+	VkResult res = vkMapMemory(m_vkDevice, m_memAllocInfo.memoryBlock, offset, size, 0, &data);
 	AssertMsg(res == VK_SUCCESS, "vkMapMemory failed (res = %d).", static_cast<int32_t>(res));
 	return data;
 }
 
 void StagingBuffer::unmapMemory()
 {
-	vkUnmapMemory(m_vkDevice, m_memory);
+	vkUnmapMemory(m_vkDevice, m_memAllocInfo.memoryBlock);
 }
 
 void StagingBuffer::bindMemory()
 {
-	VkResult res = vkBindBufferMemory(m_vkDevice, m_buffer, m_memory, 0);
+	VkResult res = vkBindBufferMemory(m_vkDevice, m_buffer, m_memAllocInfo.memoryBlock, m_memAllocInfo.offset);
 	AssertMsg(res == VK_SUCCESS, "vkBindBuffer failed (res = %d).", static_cast<int32_t>(res));
 }
 
