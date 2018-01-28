@@ -1647,7 +1647,7 @@ void RenderDevice::copyImage(VkCommandBuffer commandBuffer, VkImage srcImage, Vk
 }
 
 Buffer::Buffer(RenderDevice& renderDevice, VkDeviceSize size, VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags)
-	: m_vkDevice(renderDevice.m_vkDevice)
+	: m_renderDevice(renderDevice)
 	, m_buffer(nullptr)
 	, m_memAllocInfo{nullptr, 0}
 	, m_allocatedSize(0)
@@ -1658,10 +1658,10 @@ Buffer::Buffer(RenderDevice& renderDevice, VkDeviceSize size, VkBufferUsageFlags
 	vertexBufferInfo.usage = usageFlags;
 	vertexBufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-	vkCreateBuffer(m_vkDevice, &vertexBufferInfo, nullptr, &m_buffer);
+	vkCreateBuffer(renderDevice.m_vkDevice, &vertexBufferInfo, nullptr, &m_buffer);
 
 	VkMemoryRequirements memReqs;
-	vkGetBufferMemoryRequirements(m_vkDevice, m_buffer, &memReqs);
+	vkGetBufferMemoryRequirements(renderDevice.m_vkDevice, m_buffer, &memReqs);
 
 	m_allocatedSize = memReqs.size;
 
@@ -1671,13 +1671,13 @@ Buffer::Buffer(RenderDevice& renderDevice, VkDeviceSize size, VkBufferUsageFlags
 
 Buffer::~Buffer()
 {
-	vkDestroyBuffer(m_vkDevice, m_buffer, nullptr);
-	vkFreeMemory(m_vkDevice, m_memAllocInfo.memoryBlock, nullptr);
+	vkDestroyBuffer(m_renderDevice.m_vkDevice, m_buffer, nullptr);
+	vkFreeMemory(m_renderDevice.m_vkDevice, m_memAllocInfo.memoryBlock, nullptr);
 }
 
 void Buffer::bindMemory()
 {
-	VkResult res = vkBindBufferMemory(m_vkDevice, m_buffer, m_memAllocInfo.memoryBlock, m_memAllocInfo.offset);
+	VkResult res = vkBindBufferMemory(m_renderDevice.m_vkDevice, m_buffer, m_memAllocInfo.memoryBlock, m_memAllocInfo.offset);
 	AssertMsg(res == VK_SUCCESS, "vkBindBuffer failed (res = %d).", static_cast<int32_t>(res));
 }
 
@@ -1689,18 +1689,16 @@ StagingBuffer::StagingBuffer(RenderDevice& renderDevice, VkDeviceSize size, VkBu
 	AssertMsg((memoryPropertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) == 0, "StagingBuffer can not be created have VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT set.\n");
 	memoryPropertyFlags |= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT; // Must be set for staging buffer so set it here just in case.
 
-	m_vkDevice = renderDevice.m_vkDevice;
-
 	VkBufferCreateInfo vertexBufferInfo = {};
 	vertexBufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO; 
 	vertexBufferInfo.size = size;
 	vertexBufferInfo.usage = usageFlags;
 	vertexBufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-	vkCreateBuffer(m_vkDevice, &vertexBufferInfo, nullptr, &m_buffer);
+	vkCreateBuffer(renderDevice.m_vkDevice, &vertexBufferInfo, nullptr, &m_buffer);
 
 	VkMemoryRequirements memReqs;
-	vkGetBufferMemoryRequirements(m_vkDevice, m_buffer, &memReqs);
+	vkGetBufferMemoryRequirements(renderDevice.m_vkDevice, m_buffer, &memReqs);
 
 	m_allocatedSize = memReqs.size;
 
@@ -1716,19 +1714,13 @@ StagingBuffer::~StagingBuffer()
 void *StagingBuffer::mapMemory(VkDeviceSize offset, VkDeviceSize size)
 {
 	void *data = nullptr;
-	VkResult res = vkMapMemory(m_vkDevice, m_memAllocInfo.memoryBlock, offset, size, 0, &data);
+	VkResult res = vkMapMemory(m_renderDevice.m_vkDevice, m_memAllocInfo.memoryBlock, offset, size, 0, &data);
 	AssertMsg(res == VK_SUCCESS, "vkMapMemory failed (res = %d).", static_cast<int32_t>(res));
 	return data;
 }
 
 void StagingBuffer::unmapMemory()
 {
-	vkUnmapMemory(m_vkDevice, m_memAllocInfo.memoryBlock);
-}
-
-void StagingBuffer::bindMemory()
-{
-	VkResult res = vkBindBufferMemory(m_vkDevice, m_buffer, m_memAllocInfo.memoryBlock, m_memAllocInfo.offset);
-	AssertMsg(res == VK_SUCCESS, "vkBindBuffer failed (res = %d).", static_cast<int32_t>(res));
+	vkUnmapMemory(m_renderDevice.m_vkDevice, m_memAllocInfo.memoryBlock);
 }
 

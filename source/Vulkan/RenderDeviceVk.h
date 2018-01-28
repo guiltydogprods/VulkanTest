@@ -128,15 +128,14 @@ struct Buffer
 
 protected:
 	Buffer(RenderDevice& renderDevice)
-		: m_vkDevice(renderDevice.m_vkDevice)
+		: m_renderDevice(renderDevice)
 		, m_buffer(nullptr)
 		, m_memAllocInfo{ nullptr, 0 }
 		, m_allocatedSize(0) {}
 
 public:
-	VkDevice&		m_vkDevice;
+	RenderDevice&	m_renderDevice;
 	VkBuffer		m_buffer;
-//	VkDeviceMemory	m_memory;
 	MemAllocInfo    m_memAllocInfo;
 	VkDeviceSize	m_allocatedSize;
 };
@@ -148,11 +147,5 @@ struct StagingBuffer : public Buffer
 
 	void *mapMemory(VkDeviceSize offset = 0, VkDeviceSize size = VK_WHOLE_SIZE);
 	void unmapMemory();
-	void bindMemory();
-
-//	VkDevice&		m_vkDevice;
-//	VkBuffer		m_buffer;
-//	VkDeviceMemory	m_memory;
-//	VkDeviceSize	m_allocatedSize;
 };
 
