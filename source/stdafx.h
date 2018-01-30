@@ -22,4 +22,5 @@
 
 #include "Framework/Application.h"
 #include "Framework/File.h"
+#include "Framework/Singleton.h"
 #include "Framework/System.h"

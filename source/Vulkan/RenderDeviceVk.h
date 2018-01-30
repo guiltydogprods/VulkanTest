@@ -2,6 +2,7 @@
 
 struct Buffer;
 struct Mesh;
+struct MemoryBlock;
 
 struct MemAllocInfo
 {
@@ -9,10 +10,30 @@ struct MemAllocInfo
 	VkDeviceSize offset;
 };
 
+const uint32_t kMaxBlocks = 16;
+
 struct RenderDevice
 {
 	RenderDevice();
 	~RenderDevice();
+
+	struct MemoryManager
+	{
+		friend struct RenderDevice;
+	public:
+		static MemoryManager& Instance();
+		MemAllocInfo allocate(VkDeviceSize size, VkDeviceSize alignment, uint32_t typeIndex);
+		MemoryBlock& findBlock(VkDeviceSize size, VkDeviceSize alignment, uint32_t typeIndex);
+
+
+		RenderDevice *m_pRenderDevice;
+		MemoryBlock *m_blocks[kMaxBlocks];
+		uint32_t m_numBlocks;
+	private:
+		inline void setRenderDevice(RenderDevice *pRenderDevice) { m_pRenderDevice = pRenderDevice; }
+
+		MemoryManager();
+	};
 
 	void initialize(GLFWwindow *window);
 	void finalize(Mesh *meshes, uint32_t numMeshes);
@@ -117,6 +138,20 @@ struct RenderDevice
 
 	Mesh								*m_meshes;
 	uint32_t							m_numMeshes;
+};
+
+struct MemoryBlock
+{
+	MemoryBlock(VkDevice device, VkDeviceSize size, uint32_t typeIndex);
+	~MemoryBlock();
+
+	MemAllocInfo allocate(VkDeviceSize size, VkDeviceSize alignment);
+
+	VkDevice m_vkDevice;
+	VkDeviceMemory m_memory;
+	VkDeviceSize m_size;
+	VkDeviceSize m_offset;
+	uint32_t m_typeIndex;
 };
 
 struct Buffer

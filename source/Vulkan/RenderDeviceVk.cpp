@@ -71,6 +71,8 @@ RenderDevice::RenderDevice()
 	, m_meshes(nullptr)
 	, m_numMeshes(0)
 {
+	MemoryManager::Instance().setRenderDevice(this);
+
 	Application* app = Application::GetApplication();
 
 	initialize(app->getGLFWwindow());
@@ -563,7 +565,8 @@ void RenderDevice::createDepthBuffer()
 	VkMemoryRequirements memRequirements;
 	vkGetImageMemoryRequirements(m_vkDevice, m_vkDepthBufferImage, &memRequirements);
 	uint32_t memoryTypeIndex = getMemoryType(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-	m_depthBufferMemAllocInfo = allocateGpuMemory(memRequirements.size, memRequirements.alignment, memoryTypeIndex);
+	m_depthBufferMemAllocInfo = MemoryManager::Instance().allocate(memRequirements.size, memRequirements.alignment, memoryTypeIndex);
+//	m_depthBufferMemAllocInfo = allocateGpuMemory(memRequirements.size, memRequirements.alignment, memoryTypeIndex);
 	if (vkBindImageMemory(m_vkDevice, m_vkDepthBufferImage, m_depthBufferMemAllocInfo.memoryBlock, m_depthBufferMemAllocInfo.offset) != VK_SUCCESS)
 	{
 		print("failed to bind memory to image\n");
@@ -1644,6 +1647,78 @@ void RenderDevice::copyImage(VkCommandBuffer commandBuffer, VkImage srcImage, Vk
 	region.extent.depth = 1;
 
 	vkCmdCopyImage(commandBuffer, srcImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+}
+
+RenderDevice::MemoryManager::MemoryManager()
+	: m_pRenderDevice(nullptr)
+	, m_numBlocks(0)
+{
+	for (uint32_t i = 0; i < kMaxBlocks; ++i)
+		m_blocks[i] = nullptr;
+}
+
+RenderDevice::MemoryManager& RenderDevice::MemoryManager::Instance()
+{
+	static MemoryManager ms_instance;
+	return ms_instance;
+}
+
+MemAllocInfo RenderDevice::MemoryManager::allocate(VkDeviceSize size, VkDeviceSize alignment, uint32_t typeIndex)
+{
+	MemoryBlock& memBlock = findBlock(size, alignment, typeIndex);
+	print("allocate size = %ld, alighment = %ld, typeIndex = %d\n", size, alignment, typeIndex);
+	return memBlock.allocate(size, alignment);
+}
+
+MemoryBlock& RenderDevice::MemoryManager::findBlock(VkDeviceSize size, VkDeviceSize alignment, uint32_t typeIndex)
+{
+	for (uint32_t i = 0; i < m_numBlocks; ++i)
+	{
+		if (m_blocks[i] != nullptr && m_blocks[i]->m_typeIndex == typeIndex)
+		{
+			return *m_blocks[i];
+		}
+	}
+	AssertMsg((m_pRenderDevice), "MemoryManager::m_pRenderDevice has not been set.\n");
+	MemoryBlock *newBlock = m_blocks[m_numBlocks++] = new MemoryBlock(m_pRenderDevice->m_vkDevice, 256 * 1024 * 1024, typeIndex);
+
+	return *newBlock;
+}
+
+MemoryBlock::MemoryBlock(VkDevice vkDevice, VkDeviceSize size, uint32_t typeIndex)
+	: m_vkDevice(vkDevice)
+	, m_memory(nullptr)
+	, m_size(0)
+	, m_offset(0)
+	, m_typeIndex(typeIndex)
+{
+	VkMemoryAllocateInfo allocInfo = {};
+	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	allocInfo.allocationSize = size;
+	allocInfo.memoryTypeIndex = typeIndex;
+
+	VkResult res = vkAllocateMemory(vkDevice, &allocInfo, nullptr, &m_memory);
+	if (res == VK_SUCCESS)
+		m_size = size;
+}
+
+MemoryBlock::~MemoryBlock()
+{
+	vkFreeMemory(m_vkDevice, m_memory, nullptr);
+}
+
+static VkDeviceSize alignedSize(VkDeviceSize size, VkDeviceSize align = 16)
+{
+	return (size + (align - 1)) & ~(align - 1);
+}
+
+MemAllocInfo MemoryBlock::allocate(VkDeviceSize size, VkDeviceSize alignment)
+{
+	VkDeviceSize offset = m_offset;
+	m_offset += alignedSize(size, alignment);	// +(size + (alignment - 1)) & ~(alignment - 1);
+	MemAllocInfo info = {m_memory, m_offset};
+
+	return info;
 }
 
 Buffer::Buffer(RenderDevice& renderDevice, VkDeviceSize size, VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags)
