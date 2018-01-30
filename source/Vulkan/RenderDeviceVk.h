@@ -3,6 +3,7 @@
 struct Buffer;
 struct Mesh;
 struct MemoryBlock;
+struct MemorySubBlock;
 
 struct MemAllocInfo
 {
