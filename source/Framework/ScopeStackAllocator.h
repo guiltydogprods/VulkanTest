@@ -23,7 +23,7 @@ public:
 #ifdef MEM_DEBUG
 		if (scopeName)
 		{
-			strcpy(m_scopeName, scopeName);
+			strcpy_s(m_scopeName, sizeof(m_scopeName), scopeName);
 			print("Push Scope: (0x%016x) %s\n", (size_t)this, m_scopeName);
 			if (strlen(scopeName) < 1)
 			{
@@ -45,7 +45,7 @@ public:
 #ifdef MEM_DEBUG
 		if (scopeName)
 		{
-			strcpy(m_scopeName, scopeName);
+			strcpy_s(m_scopeName, sizeof(m_scopeName), scopeName);
 			print("Push Scope: (0x%016x) %s\n", (size_t)this, m_scopeName);
 			if (strlen(scopeName) < 1)
 			{
@@ -70,7 +70,7 @@ public:
 		}
 		m_alloc.rewind(m_rewindPoint);
 	}
-
+#if 1
 	template <typename T, typename... Args>
 	T* newObject(Args&&... params)
 	{
@@ -85,18 +85,37 @@ public:
 
 		// Link this finalizer onto the chain.
 		f->fn = &destructorCall<T>;
-		f->chain = m_finalizerChain.load(std::memory_order_relaxed);
-		while (!m_finalizerChain.compare_exchange_weak(f->chain, f, std::memory_order_release, std::memory_order_relaxed));
+		f->chain = m_finalizerChain;
+		m_finalizerChain = f;
 		return result;
 	}
+#endif
+#if 0
+	template <typename T>
+	T* newObject() 
+	{
+		// Allocate memory for finalizer + object.
+		Finalizer* f = allocWithFinalizer(sizeof(T));
 
+		// Placement construct object in space after finalizer. Do this before
+		// linking in the finalizer for this object so nested calls will be
+		// finalized after this object.
+		T* result = new (objectFromFinalizer(f)) T;
+
+		// Link this finalizer onto the chain.
+		f->fn = &destructorCall<T>;
+		f->chain = m_finalizerChain;
+		m_finalizerChain = f;
+		return result;
+	}
+#endif
 	template <typename T>
 	T* newPOD()
 	{
 		return new (m_alloc.allocate(sizeof(T))) T;
 	}
 
-	void *alloc(size_t size, size_t align = 16)
+	void *allocate(size_t size, size_t align = 16)
 	{
 		return m_alloc.allocate(size, align);
 	}

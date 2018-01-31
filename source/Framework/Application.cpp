@@ -16,7 +16,7 @@ Application::~Application()
 	ms_application = nullptr;
 }
 
-void Application::initialize()
+void Application::initialize(ScopeStack& scopeStack)
 {
 }
 

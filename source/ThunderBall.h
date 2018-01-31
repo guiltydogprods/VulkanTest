@@ -9,7 +9,7 @@ public:
 	ThunderBallApp();
 	~ThunderBallApp();
 
-	void initialize();
+	void initialize(ScopeStack& scopeStack);
 	void update();
 	void render();
 	void resize(uint32_t width, uint32_t height);

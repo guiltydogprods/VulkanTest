@@ -10,7 +10,7 @@ public:
 
 	static Application* GetApplication() {	return ms_application;	}
 
-	virtual void initialize();
+	virtual void initialize(ScopeStack& scopeStack);
 	virtual void cleanup();
 	virtual void update();
 	virtual void render();
@@ -31,6 +31,7 @@ protected:
 #if defined(WIN32)
 	GLFWwindow			*m_glfwWindow;
 #endif // defined(WIND32)
+	ScopeStack			*m_scopeStack;
 	RenderDevice		*m_pRenderDevice;
 	static Application *ms_application;
 };
