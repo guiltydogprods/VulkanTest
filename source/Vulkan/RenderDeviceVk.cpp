@@ -565,8 +565,8 @@ void RenderDevice::createDepthBuffer()
 	VkMemoryRequirements memRequirements;
 	vkGetImageMemoryRequirements(m_vkDevice, m_vkDepthBufferImage, &memRequirements);
 	uint32_t memoryTypeIndex = getMemoryType(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-	m_depthBufferMemAllocInfo = MemoryManager::Instance().allocate(memRequirements.size, memRequirements.alignment, memoryTypeIndex);
-//	m_depthBufferMemAllocInfo = allocateGpuMemory(memRequirements.size, memRequirements.alignment, memoryTypeIndex);
+//	m_depthBufferMemAllocInfo = MemoryManager::Instance().allocate(memRequirements.size, memRequirements.alignment, memoryTypeIndex);
+	m_depthBufferMemAllocInfo = allocateGpuMemory(memRequirements.size, memRequirements.alignment, memoryTypeIndex);
 	if (vkBindImageMemory(m_vkDevice, m_vkDepthBufferImage, m_depthBufferMemAllocInfo.memoryBlock, m_depthBufferMemAllocInfo.offset) != VK_SUCCESS)
 	{
 		print("failed to bind memory to image\n");
@@ -1464,8 +1464,8 @@ void RenderDevice::createTexture(const char *filename)
 	vkGetImageMemoryRequirements(m_vkDevice, m_vkTextureImage[texIndex], &memRequirements);
 
 	uint32_t memoryTypeIndex = getMemoryType(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);	// , dstAllocInfo.memoryTypeIndex);
-	m_textureMemAllocInfo[texIndex] = MemoryManager::Instance().allocate(memRequirements.size, memRequirements.alignment, memoryTypeIndex);
-//	m_textureMemAllocInfo[texIndex] = allocateGpuMemory(memRequirements.size, memRequirements.alignment, memoryTypeIndex);
+//	m_textureMemAllocInfo[texIndex] = MemoryManager::Instance().allocate(memRequirements.size, memRequirements.alignment, memoryTypeIndex);
+	m_textureMemAllocInfo[texIndex] = allocateGpuMemory(memRequirements.size, memRequirements.alignment, memoryTypeIndex);
 	if (vkBindImageMemory(m_vkDevice, m_vkTextureImage[texIndex], m_textureMemAllocInfo[texIndex].memoryBlock, m_textureMemAllocInfo[texIndex].offset) != VK_SUCCESS)
 	{
 		print("failed to bind memory to image\n");
