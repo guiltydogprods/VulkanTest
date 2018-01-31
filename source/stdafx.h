@@ -22,5 +22,7 @@
 
 #include "Framework/Application.h"
 #include "Framework/File.h"
-#include "Framework/Singleton.h"
 #include "Framework/System.h"
+#include "Framework/LinearAllocator.h"
+#include "Framework/ScopeStackAllocator.h"
+#include "Framework/Singleton.h"
