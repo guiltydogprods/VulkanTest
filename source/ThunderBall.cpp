@@ -13,7 +13,7 @@ class Test
 {
 public:
 	Test(uint32_t val) : m_val(val) {}
-	~Test() {}
+	~Test() { print("Test::dtor...\n"); }
 
 	uint32_t val() { return m_val; }
 	uint32_t m_val;
@@ -41,9 +41,8 @@ ThunderBallApp::~ThunderBallApp()
 void ThunderBallApp::initialize(ScopeStack& scopeStack)
 {
 	m_scopeStack = &scopeStack;
-	Test *test = scopeStack.newObject<Test>(20);
 
-	m_pRenderDevice = scopeStack.newObject<RenderDevice>();
+	m_pRenderDevice = new RenderDevice(); // scopeStack.newObject<RenderDevice>();
 
 	const char *meshes[] =
 	{
@@ -52,12 +51,12 @@ void ThunderBallApp::initialize(ScopeStack& scopeStack)
 //		"box.s3d"
 	};
 
-	uint32_t verticesSize = 100000;
-	uint32_t indicesSize = 100000;
-	m_pRenderDevice->m_vertexBuffer = new Buffer(*m_pRenderDevice, verticesSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	uint32_t verticesSize = 10000;
+	uint32_t indicesSize = 10000;
+	m_pRenderDevice->m_vertexBuffer = new /*scopeStack.newObject<Buffer>*/Buffer(*m_pRenderDevice, verticesSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 	m_pRenderDevice->m_vertexBuffer->bindMemory();
 	int64_t vertexBufferOffset = 0;
-	m_pRenderDevice->m_indexBuffer = new Buffer(*m_pRenderDevice, indicesSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	m_pRenderDevice->m_indexBuffer = new /*scopeStack.newObject<Buffer>*/Buffer(*m_pRenderDevice, indicesSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 	m_pRenderDevice->m_indexBuffer->bindMemory();
 	int64_t indexBufferOffset = 0;
 

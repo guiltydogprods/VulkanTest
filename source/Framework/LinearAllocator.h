@@ -18,7 +18,8 @@ public:
 	void* allocate(size_t size, size_t align = 16)
 	{
 		size = alignedSize(size, align);
-		uint8_t *result = m_ptr += size;
+		uint8_t *result = m_ptr;
+		m_ptr += size;
 		AssertMsg((result + size <= m_end), "Out of memory.");
 #ifdef MEM_DEBUG
 		print("Allocated %d bytes from 0x%016lx\n", size, (size_t)result);

@@ -62,7 +62,7 @@ public:
 	~ScopeStack()
 	{
 #ifdef MEM_DEBUG
-		print("Pop Scope: (0x%016x)\n", (size_t)this);
+		print("Pop Scope: (0x%016x) %s\n", (size_t)this, m_scopeName);
 #endif
 		for (Finalizer *f = m_finalizerChain; f; f = f->chain)
 		{

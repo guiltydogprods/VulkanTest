@@ -9,7 +9,7 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include "glm/gtx/transform.hpp"
 
-//#define USE_SECONDARY_DEVICE
+#define USE_SECONDARY_DEVICE
 
 const char* validationLayers[] = 
 {
@@ -80,6 +80,7 @@ RenderDevice::RenderDevice()
 
 RenderDevice::~RenderDevice()
 {
+	print("RenderDevice::dtor...\n");
 	cleanup();
 }
 
@@ -1728,6 +1729,7 @@ Buffer::Buffer(RenderDevice& renderDevice, VkDeviceSize size, VkBufferUsageFlags
 	, m_memAllocInfo{nullptr, 0}
 	, m_allocatedSize(0)
 {
+
 	VkBufferCreateInfo vertexBufferInfo = {};
 	vertexBufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	vertexBufferInfo.size = size;
@@ -1747,6 +1749,7 @@ Buffer::Buffer(RenderDevice& renderDevice, VkDeviceSize size, VkBufferUsageFlags
 
 Buffer::~Buffer()
 {
+	print("Buffer::dtor\n");
 	vkDestroyBuffer(m_renderDevice.m_vkDevice, m_buffer, nullptr);
 	vkFreeMemory(m_renderDevice.m_vkDevice, m_memAllocInfo.memoryBlock, nullptr);
 }
@@ -1785,6 +1788,7 @@ StagingBuffer::StagingBuffer(RenderDevice& renderDevice, VkDeviceSize size, VkBu
 StagingBuffer::~StagingBuffer()
 {
 	// Vulkan resources destroyed in base.
+	print("Staging ");
 }
 
 void *StagingBuffer::mapMemory(VkDeviceSize offset, VkDeviceSize size)
