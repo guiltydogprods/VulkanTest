@@ -101,7 +101,7 @@ void RenderDevice::finalize(Mesh *meshes, uint32_t numMeshes)
 {
 	m_meshes = meshes;
 	m_numMeshes = numMeshes;
-	createVertexBuffer();
+//	createVertexBuffer();
 	createUniformBuffer();
 	createRenderPass();
 	createFramebuffers();
@@ -159,10 +159,10 @@ void RenderDevice::cleanup()
 	vkDestroyCommandPool(m_vkDevice, m_vkCommandPool, nullptr);
 	vkDestroyBuffer(m_vkDevice, m_vkUniformBuffer, nullptr);
 	vkFreeMemory(m_vkDevice, m_uniformBufferMemAllocInfo.memoryBlock, nullptr);
-	delete m_indexBuffer;
-	m_indexBuffer = nullptr;
-	delete m_vertexBuffer;
-	m_vertexBuffer = nullptr;
+//	delete m_indexBuffer;
+//	m_indexBuffer = nullptr;
+//	delete m_vertexBuffer;
+//	m_vertexBuffer = nullptr;
 	vkDestroySemaphore(m_vkDevice, m_vkImageAvailableSemaphore, nullptr);
 	vkDestroySemaphore(m_vkDevice, m_vkRenderingFinishedSemaphore, nullptr);
 	vkDestroyDevice(m_vkDevice, nullptr);
@@ -599,8 +599,13 @@ void RenderDevice::createDepthBuffer()
 	endSingleUseCommandBuffer(commandBuffer);
 }
 
-void RenderDevice::createVertexBuffer()
+void RenderDevice::createVertexBuffer(ScopeStack& scopeStack, uint32_t verticesSize, uint32_t indicesSize)
 {
+	m_vertexBuffer = scopeStack.newObject<Buffer>(*this, verticesSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	m_vertexBuffer->bindMemory();
+	m_indexBuffer = scopeStack.newObject<Buffer>(*this, indicesSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	m_indexBuffer->bindMemory();
+
 #if 0
 	Vertex vertices[] =
 	{

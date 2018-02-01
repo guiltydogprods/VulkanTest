@@ -30,38 +30,42 @@ int main(int argc, char *argv[])
 {
 	uint8_t *memoryBlock = static_cast<uint8_t *>(_aligned_malloc(kMemMgrSize, kMemMgrAlign));
 	LinearAllocator allocator(memoryBlock, kMemMgrSize);
-	ScopeStack scopeStack(allocator, "Main");
-
-	Application* app = Application::GetApplication();
-
-	if (!glfwInit())
 	{
-		print("glfwInit failed.\n");
-		exit(EXIT_FAILURE);
-	}
+		ScopeStack scopeStack(allocator, "Main");
 
-	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+		Application* app = Application::GetApplication();
 
-	GLFWwindow* window = glfwCreateWindow(app->getScreenWidth(), app->getScreenHeight(), app->getApplicationName(), nullptr, nullptr);
+		if (!glfwInit())
+		{
+			print("glfwInit failed.\n");
+			exit(EXIT_FAILURE);
+		}
+
+		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+
+		GLFWwindow* window = glfwCreateWindow(app->getScreenWidth(), app->getScreenHeight(), app->getApplicationName(), nullptr, nullptr);
 #if defined(WIN32)
-	app->setGLFWwindow(window);
+		app->setGLFWwindow(window);
 #endif
-	app->initialize(scopeStack);
+		RenderDevice *renderDevice = scopeStack.newObject<RenderDevice>();
+		app->setRenderDevice(renderDevice);
 
-	glfwSetWindowUserPointer(window, app);
-	glfwSetKeyCallback(window, key_callback);
-	glfwSetWindowSizeCallback(window, size_callback);
+		app->initialize(scopeStack);
 
-	while (!glfwWindowShouldClose(window))
-	{
-		app->update();
-		app->render();
+		glfwSetWindowUserPointer(window, app);
+		glfwSetKeyCallback(window, key_callback);
+		glfwSetWindowSizeCallback(window, size_callback);
 
-		glfwPollEvents();
+		while (!glfwWindowShouldClose(window))
+		{
+			app->update();
+			app->render();
+
+			glfwPollEvents();
+		}
+
+		app->cleanup();
+		glfwDestroyWindow(window);
 	}
-
-	app->cleanup();
-
-	glfwDestroyWindow(window);
 }
 

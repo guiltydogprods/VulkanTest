@@ -27,13 +27,15 @@ ThunderBallApp::ThunderBallApp()
 
 ThunderBallApp::~ThunderBallApp()
 {
+	print("ThunderBallApp::dtor\n");
+/*
 	Mesh* pMesh = m_meshes + m_numMeshes;
 	while (pMesh-- > m_meshes)
 		pMesh->~Mesh();
 
 	free(m_meshes);
 	m_meshes = 0;
-
+*/
 //	delete m_pRenderDevice;
 //	m_pRenderDevice = 0;
 }
@@ -42,7 +44,7 @@ void ThunderBallApp::initialize(ScopeStack& scopeStack)
 {
 	m_scopeStack = &scopeStack;
 
-	m_pRenderDevice = new RenderDevice(); // scopeStack.newObject<RenderDevice>();
+//	m_pRenderDevice = scopeStack.newObject<RenderDevice>();
 
 	const char *meshes[] =
 	{
@@ -51,13 +53,19 @@ void ThunderBallApp::initialize(ScopeStack& scopeStack)
 //		"box.s3d"
 	};
 
-	uint32_t verticesSize = 10000;
-	uint32_t indicesSize = 10000;
-	m_pRenderDevice->m_vertexBuffer = new /*scopeStack.newObject<Buffer>*/Buffer(*m_pRenderDevice, verticesSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	uint32_t verticesSize = 100000;
+	uint32_t indicesSize = 100000;
+
+	m_pRenderDevice->createVertexBuffer(scopeStack, verticesSize, indicesSize);
+/*
+	m_pRenderDevice->m_vertexBuffer = scopeStack.newObject<Buffer>(*m_pRenderDevice, verticesSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 	m_pRenderDevice->m_vertexBuffer->bindMemory();
 	int64_t vertexBufferOffset = 0;
-	m_pRenderDevice->m_indexBuffer = new /*scopeStack.newObject<Buffer>*/Buffer(*m_pRenderDevice, indicesSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	m_pRenderDevice->m_indexBuffer = scopeStack.newObject<Buffer>(*m_pRenderDevice, indicesSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 	m_pRenderDevice->m_indexBuffer->bindMemory();
+	int64_t indexBufferOffset = 0;
+*/
+	int64_t vertexBufferOffset = 0;
 	int64_t indexBufferOffset = 0;
 
 	m_numMeshes = sizeof(meshes) / sizeof(const char *);
@@ -69,6 +77,16 @@ void ThunderBallApp::initialize(ScopeStack& scopeStack)
 	m_pRenderDevice->finalize(m_meshes, m_numMeshes);
 }
 
+void ThunderBallApp::cleanup()
+{
+	print("ThunderBallApp::cleanup\n");
+	Mesh* pMesh = m_meshes + m_numMeshes;
+	while (pMesh-- > m_meshes)
+		pMesh->~Mesh();
+
+	free(m_meshes);
+	m_meshes = 0;
+}
 
 void ThunderBallApp::update()
 {

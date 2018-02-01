@@ -24,6 +24,7 @@ public:
 	inline void setGLFWwindow(GLFWwindow *glfwWindow)	{ m_glfwWindow = glfwWindow;	}
 #endif // defined(WIND32)
 	inline RenderDevice& getRenderDevice()				{ return *m_pRenderDevice;		}
+	inline void setRenderDevice(RenderDevice *renderDevice) { m_pRenderDevice = renderDevice; }
 protected:
 	const char			*m_appName;
 	uint32_t			m_screenWidth;

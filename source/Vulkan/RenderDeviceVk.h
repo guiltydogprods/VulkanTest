@@ -50,7 +50,8 @@ struct RenderDevice
 	void createCommandPool();
 	void createDepthBuffer();
 	void createTexture(const char *filename);
-	void createVertexBuffer();
+//	void createVertexBuffer();
+	void createVertexBuffer(ScopeStack& scopeStack, uint32_t verticesSize, uint32_t indicesSize);
 	void createUniformBuffer();
 	void createSwapChain();
 	void recreateSwapChain();

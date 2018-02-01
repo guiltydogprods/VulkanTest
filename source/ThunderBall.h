@@ -10,6 +10,7 @@ public:
 	~ThunderBallApp();
 
 	void initialize(ScopeStack& scopeStack);
+	void cleanup();
 	void update();
 	void render();
 	void resize(uint32_t width, uint32_t height);
