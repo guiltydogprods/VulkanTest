@@ -21,9 +21,6 @@ static void size_callback(GLFWwindow* window, int width, int height)
 		rd.recreateSwapChain();
 		app->resize(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
 	}
-
-//	RenderDevice *renderDevice = static_cast<RenderDevice *>(glfwGetWindowUserPointer(window));
-//		renderDevice->recreateSwapChain();
 }
 
 int main(int argc, char *argv[])
@@ -47,9 +44,6 @@ int main(int argc, char *argv[])
 #if defined(WIN32)
 		app->setGLFWwindow(window);
 #endif
-		RenderDevice *renderDevice = scopeStack.newObject<RenderDevice>();
-		app->setRenderDevice(renderDevice);
-
 		app->initialize(scopeStack);
 
 		glfwSetWindowUserPointer(window, app);

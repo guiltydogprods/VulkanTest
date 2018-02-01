@@ -50,9 +50,8 @@ struct RenderDevice
 	void createCommandPool();
 	void createDepthBuffer();
 	void createTexture(const char *filename);
-//	void createVertexBuffer();
-	void createVertexBuffer(ScopeStack& scopeStack, uint32_t verticesSize, uint32_t indicesSize);
-	void createUniformBuffer();
+	void createVertexFormat();
+	void createUniformBuffer(ScopeStack& scopeStack);
 	void createSwapChain();
 	void recreateSwapChain();
 	void createRenderPass();
@@ -61,7 +60,7 @@ struct RenderDevice
 	void createDescriptorSet();
 	void createCommandBuffers(Mesh *meshes, uint32_t numMeshes);
 
-	int32_t getMemoryType(uint32_t typeBits, VkFlags properties);	//, uint32_t& typeIndex);
+	int32_t getMemoryType(uint32_t typeBits, VkFlags properties);
 	MemAllocInfo allocateGpuMemory(VkDeviceSize size, VkDeviceSize alignment, uint32_t typeIndex);
 	VkShaderModule createShaderModule(const char *filename);
 	VkCommandBuffer beginSingleUseCommandBuffer();
@@ -97,14 +96,11 @@ struct RenderDevice
 
 	Buffer								*m_vertexBuffer;
 	Buffer								*m_indexBuffer;
+	Buffer								*m_uniformBuffer;
 
 	VkVertexInputBindingDescription		m_vkVertexBindingDescription;
 	uint32_t							m_vkVertexAttributeDescriptionCount;
 	VkVertexInputAttributeDescription	*m_vkVertexAttributeDescriptions;
-
-	VkBuffer							m_vkUniformBuffer;
-//	VkDeviceMemory						m_vkUniformBufferMemory;
-	MemAllocInfo						m_uniformBufferMemAllocInfo;
 
 	VkExtent2D							m_vkSwapChainExtent;
 	VkFormat							m_vkSwapChainFormat;
@@ -132,7 +128,6 @@ struct RenderDevice
 	MemAllocInfo						m_depthBufferMemAllocInfo;
 
 	VkImage								m_vkTextureImage[2];
-//	VkDeviceMemory						m_vkTextureImageMemory[2];
 	MemAllocInfo						m_textureMemAllocInfo[2];
 	VkImageView							m_vkTextureImageView[2];
 	VkSampler							m_vkSampler;
@@ -162,27 +157,30 @@ struct Buffer
 	virtual ~Buffer();
 
 	virtual void bindMemory();
+	virtual void *mapMemory(VkDeviceSize offset = 0, VkDeviceSize size = VK_WHOLE_SIZE);
+	virtual void unmapMemory();
 
 protected:
 	Buffer(RenderDevice& renderDevice)
 		: m_renderDevice(renderDevice)
 		, m_buffer(nullptr)
 		, m_memAllocInfo{ nullptr, 0 }
-		, m_allocatedSize(0) {}
+		, m_allocatedSize(0)
+		, m_usageFlags(0)
+		, m_memoryPropertyFlags(0) {}
 
 public:
-	RenderDevice&	m_renderDevice;
-	VkBuffer		m_buffer;
-	MemAllocInfo    m_memAllocInfo;
-	VkDeviceSize	m_allocatedSize;
+	RenderDevice&			m_renderDevice;
+	VkBuffer				m_buffer;
+	MemAllocInfo			m_memAllocInfo;
+	VkDeviceSize			m_allocatedSize;
+	VkBufferUsageFlags		m_usageFlags;
+	VkMemoryPropertyFlags	m_memoryPropertyFlags;
 };
 
 struct StagingBuffer : public Buffer
 {
 	StagingBuffer(RenderDevice& renderDevice, VkDeviceSize size, VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags);
 	~StagingBuffer();
-
-	void *mapMemory(VkDeviceSize offset = 0, VkDeviceSize size = VK_WHOLE_SIZE);
-	void unmapMemory();
 };
 

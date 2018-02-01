@@ -9,7 +9,7 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include "glm/gtx/transform.hpp"
 
-#define USE_SECONDARY_DEVICE
+//#define USE_SECONDARY_DEVICE
 
 const char* validationLayers[] = 
 {
@@ -101,8 +101,6 @@ void RenderDevice::finalize(Mesh *meshes, uint32_t numMeshes)
 {
 	m_meshes = meshes;
 	m_numMeshes = numMeshes;
-//	createVertexBuffer();
-	createUniformBuffer();
 	createRenderPass();
 	createFramebuffers();
 	createGraphicsPipeline();
@@ -157,12 +155,6 @@ void RenderDevice::cleanup()
 	vkFreeMemory(m_vkDevice, m_depthBufferMemAllocInfo.memoryBlock, nullptr);
 	vkDestroySwapchainKHR(m_vkDevice, m_vkSwapChain, nullptr);
 	vkDestroyCommandPool(m_vkDevice, m_vkCommandPool, nullptr);
-	vkDestroyBuffer(m_vkDevice, m_vkUniformBuffer, nullptr);
-	vkFreeMemory(m_vkDevice, m_uniformBufferMemAllocInfo.memoryBlock, nullptr);
-//	delete m_indexBuffer;
-//	m_indexBuffer = nullptr;
-//	delete m_vertexBuffer;
-//	m_vertexBuffer = nullptr;
 	vkDestroySemaphore(m_vkDevice, m_vkImageAvailableSemaphore, nullptr);
 	vkDestroySemaphore(m_vkDevice, m_vkRenderingFinishedSemaphore, nullptr);
 	vkDestroyDevice(m_vkDevice, nullptr);
@@ -204,12 +196,10 @@ void RenderDevice::update()
 
 	glm::mat4x4 projectionMatrix = glm::frustum(left, right, bottom, top, nearZ, farZ);
 
-	void *data;
-	vkMapMemory(m_vkDevice, m_uniformBufferMemAllocInfo.memoryBlock, m_uniformBufferMemAllocInfo.offset, sizeof(UniformBufferData), 0, &data);
-	UniformBufferData *uboData = static_cast<UniformBufferData *>(data);
+	UniformBufferData *uboData = static_cast<UniformBufferData *>(m_uniformBuffer->mapMemory());
 	uboData->tranformationMatrix[0] = projectionMatrix * viewMatrix * modelMatrix;
 	uboData->tranformationMatrix[1] = projectionMatrix * viewMatrix * modelMatrix2;
-	vkUnmapMemory(m_vkDevice, m_uniformBufferMemAllocInfo.memoryBlock);
+	m_uniformBuffer->unmapMemory();
 
 	angle += 1.0f;
 	if (angle > 360.0f)
@@ -599,62 +589,8 @@ void RenderDevice::createDepthBuffer()
 	endSingleUseCommandBuffer(commandBuffer);
 }
 
-void RenderDevice::createVertexBuffer(ScopeStack& scopeStack, uint32_t verticesSize, uint32_t indicesSize)
+void RenderDevice::createVertexFormat()
 {
-	m_vertexBuffer = scopeStack.newObject<Buffer>(*this, verticesSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-	m_vertexBuffer->bindMemory();
-	m_indexBuffer = scopeStack.newObject<Buffer>(*this, indicesSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-	m_indexBuffer->bindMemory();
-
-#if 0
-	Vertex vertices[] =
-	{
-		{ { -1.0f, -1.0f, 0.0f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f } },
-		{ { -1.0f,  1.0f, 0.0f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 1.0f } },
-		{ {  1.0f,  1.0f, 0.0f }, { 1.0f, 0.0f, 1.0f }, { 1.0f, 1.0f } },
-		{ { 1.0f, -1.0f, 0.0f }, { 0.0f, 0.0f, 1.0f }, { 1.0f, 0.0f } },
-
-		{ { -2.0f, -1.0f, -1.5f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f } },
-		{ { -2.0f, 1.0f, -1.5f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 1.0f } },
-		{ { 0.0f, 1.0f, -1.5f }, { 1.0f, 0.0f, 1.0f }, { 1.0f, 1.0f } },
-		{ { 0.0f, -1.0f, -1.5f }, { 0.0f, 0.0f, 1.0f }, { 1.0f, 0.0f } },
-
-	};
-	size_t verticesSize = sizeof(vertices);
-
-	uint32_t indices[] = { 0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7 };
-	size_t indicesSize = sizeof(indices);
-
-	void *data = nullptr;
-
-	Buffer vertexStagingBuffer(*this, verticesSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-	data = vertexStagingBuffer.mapMemory();
-	memcpy(data, vertices, verticesSize);
-	vertexStagingBuffer.unmapMemory();
-	vertexStagingBuffer.bindMemory();
-
-	Buffer indexStagingBuffer(*this, indicesSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-	data = indexStagingBuffer.mapMemory();
-	memcpy(data, indices, indicesSize);
-	indexStagingBuffer.unmapMemory();
-	indexStagingBuffer.bindMemory();
-
-	m_vertexBuffer = new Buffer(*this, verticesSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-	m_vertexBuffer->bindMemory();
-
-	m_indexBuffer = new Buffer(*this, indicesSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-	m_indexBuffer->bindMemory();
-
-	VkCommandBuffer copyCommandBuffer = beginSingleUseCommandBuffer();
-	VkBufferCopy copyRegion = {};
-	copyRegion.size = verticesSize;
-	vkCmdCopyBuffer(copyCommandBuffer, vertexStagingBuffer.m_buffer, m_vertexBuffer->m_buffer, 1, &copyRegion);
-	copyRegion.size = indicesSize;
-	vkCmdCopyBuffer(copyCommandBuffer, indexStagingBuffer.m_buffer, m_indexBuffer->m_buffer, 1, &copyRegion);
-	endSingleUseCommandBuffer(copyCommandBuffer);
-
-	print("set up vertex and index buffers\n");
-#endif
 	m_vkVertexBindingDescription.binding = 0;
 	m_vkVertexBindingDescription.stride = sizeof(Vertex);
 	m_vkVertexBindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
@@ -677,21 +613,10 @@ void RenderDevice::createVertexBuffer(ScopeStack& scopeStack, uint32_t verticesS
 	m_vkVertexAttributeDescriptions[2].offset = sizeof(float) * 6;
 }
 
-void RenderDevice::createUniformBuffer()
+void RenderDevice::createUniformBuffer(ScopeStack& scopeStack)
 {
-	VkBufferCreateInfo bufferInfo = {};
-	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	bufferInfo.size = sizeof(UniformBufferData);
-	bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-
-	vkCreateBuffer(m_vkDevice, &bufferInfo, nullptr, &m_vkUniformBuffer);
-
-	VkMemoryRequirements memReqs;
-	vkGetBufferMemoryRequirements(m_vkDevice, m_vkUniformBuffer, &memReqs);
-
-	uint32_t memoryTypeIndex = getMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);	// , allocInfo.memoryTypeIndex);
-	m_uniformBufferMemAllocInfo = allocateGpuMemory(memReqs.size, memReqs.alignment, memoryTypeIndex);
-	vkBindBufferMemory(m_vkDevice, m_vkUniformBuffer, m_uniformBufferMemAllocInfo.memoryBlock, m_uniformBufferMemAllocInfo.offset);
+	m_uniformBuffer = scopeStack.newObject<Buffer>(*this, sizeof(UniformBufferData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+	m_uniformBuffer->bindMemory();
 }
 
 void RenderDevice::createSwapChain()
@@ -1022,14 +947,6 @@ void RenderDevice::createGraphicsPipeline()
 			0,                                      // offset
 			4                                       // size
 		}
-/*
-		,
-		{
-			VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,  // stageFlags
-			4,                                      // offset
-			4                                       // size
-		},
-*/
 	};
 
 	VkPipelineLayoutCreateInfo layoutCreateInfo = {};
@@ -1125,8 +1042,8 @@ void RenderDevice::createDescriptorSet()
 
 	// Update descriptor set with uniform binding
 	VkDescriptorBufferInfo descriptorBufferInfo = {};
-	descriptorBufferInfo.buffer = m_vkUniformBuffer;
-	descriptorBufferInfo.offset = 0;
+	descriptorBufferInfo.buffer = m_uniformBuffer->m_buffer; //m_vkUniformBuffer;
+	descriptorBufferInfo.offset = m_uniformBuffer->m_memAllocInfo.offset;	// 0;
 	descriptorBufferInfo.range = sizeof(UniformBufferData);
 
 	VkDescriptorImageInfo imageInfo = {};
@@ -1295,10 +1212,6 @@ void RenderDevice::createCommandBuffers(Mesh *meshes, uint32_t numMeshes)
 
 	vkDestroyPipelineLayout(m_vkDevice, m_vkPipelineLayout, nullptr);
 }
-
-//1001 0000
-//1000 0010
-//0110 1000 0001
 
 int32_t RenderDevice::getMemoryType(uint32_t typeBits, VkMemoryPropertyFlags properties)	//, uint32_t& typeIndex)
 {
@@ -1733,6 +1646,8 @@ Buffer::Buffer(RenderDevice& renderDevice, VkDeviceSize size, VkBufferUsageFlags
 	, m_buffer(nullptr)
 	, m_memAllocInfo{nullptr, 0}
 	, m_allocatedSize(0)
+	, m_usageFlags(usageFlags)
+	, m_memoryPropertyFlags(memoryPropertyFlags)
 {
 
 	VkBufferCreateInfo vertexBufferInfo = {};
@@ -1765,6 +1680,22 @@ void Buffer::bindMemory()
 	AssertMsg(res == VK_SUCCESS, "vkBindBuffer failed (res = %d).", static_cast<int32_t>(res));
 }
 
+void *Buffer::mapMemory(VkDeviceSize offset, VkDeviceSize size)
+{
+	AssertMsg((m_memoryPropertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT), "Error: VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT not set.\n");
+	void *data = nullptr;
+	VkResult res = vkMapMemory(m_renderDevice.m_vkDevice, m_memAllocInfo.memoryBlock, offset, size, 0, &data);
+	AssertMsg(res == VK_SUCCESS, "vkMapMemory failed (res = %d).", static_cast<int32_t>(res));
+	return data;
+}
+
+void Buffer::unmapMemory()
+{
+	AssertMsg((m_memoryPropertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) != 0, "Error: VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT not set.\n");
+	vkUnmapMemory(m_renderDevice.m_vkDevice, m_memAllocInfo.memoryBlock);
+}
+
+
 StagingBuffer::StagingBuffer(RenderDevice& renderDevice, VkDeviceSize size, VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags)
 	: Buffer(renderDevice)
 {
@@ -1772,6 +1703,9 @@ StagingBuffer::StagingBuffer(RenderDevice& renderDevice, VkDeviceSize size, VkBu
 	AssertMsg((usageFlags & (VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT)) != 0, "StagingBuffer requires either VK_BUFFER_USAGE_TRANSFER_SRC_BIT or VK_BUFFER_USAGE_TRANSFRER_DST_BIT to be set.\n");
 	AssertMsg((memoryPropertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) == 0, "StagingBuffer can not be created have VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT set.\n");
 	memoryPropertyFlags |= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT; // Must be set for staging buffer so set it here just in case.
+
+	m_usageFlags = usageFlags;
+	m_memoryPropertyFlags = memoryPropertyFlags;
 
 	VkBufferCreateInfo vertexBufferInfo = {};
 	vertexBufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO; 
@@ -1795,17 +1729,3 @@ StagingBuffer::~StagingBuffer()
 	// Vulkan resources destroyed in base.
 	print("Staging ");
 }
-
-void *StagingBuffer::mapMemory(VkDeviceSize offset, VkDeviceSize size)
-{
-	void *data = nullptr;
-	VkResult res = vkMapMemory(m_renderDevice.m_vkDevice, m_memAllocInfo.memoryBlock, offset, size, 0, &data);
-	AssertMsg(res == VK_SUCCESS, "vkMapMemory failed (res = %d).", static_cast<int32_t>(res));
-	return data;
-}
-
-void StagingBuffer::unmapMemory()
-{
-	vkUnmapMemory(m_renderDevice.m_vkDevice, m_memAllocInfo.memoryBlock);
-}
-
