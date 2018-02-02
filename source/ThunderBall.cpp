@@ -9,16 +9,6 @@ const char		*kApplicationName = "Thunder Ball";
 const uint32_t	kScreenWidth = 1920;
 const uint32_t	kScreenHeight = 1080;
 
-class Test
-{
-public:
-	Test(uint32_t val) : m_val(val) {}
-	~Test() {}		// print("Test::dtor (%d)\n", m_val);
-
-	uint32_t val() { return m_val; }
-	uint32_t m_val;
-};
-
 ThunderBallApp::ThunderBallApp()
 	: Application(kApplicationName, kScreenWidth, kScreenHeight)
 {
@@ -68,13 +58,11 @@ void ThunderBallApp::initialize(ScopeStack& scopeStack)
 
 void ThunderBallApp::update(ScopeStack& frameScope)
 {
-	frameScope.newObject<Test>(0);
 	m_pRenderDevice->update();
 }
 
 void ThunderBallApp::render(ScopeStack& frameScope)
 {
-	frameScope.newObject<Test>(1);
 	m_pRenderDevice->render();
 }
 
