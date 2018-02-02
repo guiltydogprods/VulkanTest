@@ -13,7 +13,7 @@ class Test
 {
 public:
 	Test(uint32_t val) : m_val(val) {}
-	~Test() { print("Test::dtor...\n"); }
+	~Test() {}		// print("Test::dtor (%d)\n", m_val);
 
 	uint32_t val() { return m_val; }
 	uint32_t m_val;
@@ -54,33 +54,24 @@ void ThunderBallApp::initialize(ScopeStack& scopeStack)
 	int64_t indexBufferOffset = 0;
 
 	m_numMeshes = sizeof(meshes) / sizeof(const char *);
-	Mesh* meshAddr = m_meshes = static_cast<Mesh *>(malloc(sizeof(Mesh) * m_numMeshes));
+	m_meshes = static_cast<Mesh **>(scopeStack.allocate(sizeof(Mesh *) * m_numMeshes));
 
-	for (uint32_t i = 0; i < m_numMeshes; ++i, ++meshAddr)
-		new (meshAddr) Mesh(meshes[i], *m_pRenderDevice->m_vertexBuffer, vertexBufferOffset, *m_pRenderDevice->m_indexBuffer, indexBufferOffset);
+	for (uint32_t i = 0; i < m_numMeshes; ++i)
+		m_meshes[i] = scopeStack.newObject<Mesh>(meshes[i], *m_pRenderDevice->m_vertexBuffer, vertexBufferOffset, *m_pRenderDevice->m_indexBuffer, indexBufferOffset);
 
 	m_pRenderDevice->createUniformBuffer(scopeStack);
 	m_pRenderDevice->finalize(m_meshes, m_numMeshes);
 }
 
-void ThunderBallApp::cleanup()
+void ThunderBallApp::update(ScopeStack& frameScope)
 {
-	print("ThunderBallApp::cleanup\n");
-	Mesh* pMesh = m_meshes + m_numMeshes;
-	while (pMesh-- > m_meshes)
-		pMesh->~Mesh();
-
-	free(m_meshes);
-	m_meshes = 0;
-}
-
-void ThunderBallApp::update()
-{
+	frameScope.newObject<Test>(0);
 	m_pRenderDevice->update();
 }
 
-void ThunderBallApp::render()
+void ThunderBallApp::render(ScopeStack& frameScope)
 {
+	frameScope.newObject<Test>(1);
 	m_pRenderDevice->render();
 }
 

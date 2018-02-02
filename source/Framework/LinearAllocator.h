@@ -22,19 +22,20 @@ public:
 		m_ptr += size;
 		AssertMsg((result + size <= m_end), "Out of memory.");
 #ifdef MEM_DEBUG
-		print("Allocated %d bytes from 0x%016lx\n", size, (size_t)result);
+//		print("Allocated %d bytes from 0x%016lx\n", size, (size_t)result);
 #endif
 		return result;
 	}
 
 	void *ptr() { return m_ptr; }
 
-	void rewind(void *ptr)
+	void rewind(void *ptr, bool bLog = true)
 	{
 		void *oldPtr = m_ptr;
 		m_ptr = (uint8_t*)ptr;
 #ifdef MEM_DEBUG
-		print("Rewinding 0x%016lx -> 0x%016lx\n", (size_t)oldPtr, (size_t)ptr);
+		if (bLog)
+			print("Rewinding 0x%016lx -> 0x%016lx\n", (size_t)oldPtr, (size_t)ptr);
 #else 
 		(void)oldPtr;
 #endif

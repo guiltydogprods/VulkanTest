@@ -37,7 +37,7 @@ struct RenderDevice
 	};
 
 	void initialize(GLFWwindow *window);
-	void finalize(Mesh *meshes, uint32_t numMeshes);
+	void finalize(Mesh **meshes, uint32_t numMeshes);
 	void cleanup();
 	void update();
 	void render();
@@ -58,7 +58,7 @@ struct RenderDevice
 	void createFramebuffers();
 	void createGraphicsPipeline();
 	void createDescriptorSet();
-	void createCommandBuffers(Mesh *meshes, uint32_t numMeshes);
+	void createCommandBuffers(Mesh **meshes, uint32_t numMeshes);
 
 	int32_t getMemoryType(uint32_t typeBits, VkFlags properties);
 	MemAllocInfo allocateGpuMemory(VkDeviceSize size, VkDeviceSize alignment, uint32_t typeIndex);
@@ -133,7 +133,7 @@ struct RenderDevice
 	VkSampler							m_vkSampler;
 	uint32_t							m_numTextures;
 
-	Mesh								*m_meshes;
+	Mesh								**m_meshes;
 	uint32_t							m_numMeshes;
 };
 

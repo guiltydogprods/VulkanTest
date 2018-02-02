@@ -97,7 +97,7 @@ void RenderDevice::initialize(GLFWwindow *window)
 	createTexture("rock7.dds");
 }
 
-void RenderDevice::finalize(Mesh *meshes, uint32_t numMeshes)
+void RenderDevice::finalize(Mesh **meshes, uint32_t numMeshes)
 {
 	m_meshes = meshes;
 	m_numMeshes = numMeshes;
@@ -1092,7 +1092,7 @@ void RenderDevice::createDescriptorSet()
 	vkUpdateDescriptorSets(m_vkDevice, 2+m_numTextures, writeDescriptorSet, 0, nullptr);
 }
 
-void RenderDevice::createCommandBuffers(Mesh *meshes, uint32_t numMeshes)
+void RenderDevice::createCommandBuffers(Mesh **meshes, uint32_t numMeshes)
 {
 	VkCommandBufferAllocateInfo commandBufferAllocateInfo = {};
 	commandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -1178,8 +1178,11 @@ void RenderDevice::createCommandBuffers(Mesh *meshes, uint32_t numMeshes)
 
 		for (uint32_t draw = 0; draw < 2; ++draw)
 		{
-			vkCmdPushConstants(m_vkCommandBuffers[i], m_vkPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, 4, &draw);
-			vkCmdDrawIndexed(m_vkCommandBuffers[i], meshes[draw].m_renderables[0].getIndexCount(), 1, meshes[draw].m_renderables[0].getFirstIndex(), meshes[draw].m_renderables[0].getFirstVertex(), 0);
+			if (meshes[draw] != nullptr)
+			{
+				vkCmdPushConstants(m_vkCommandBuffers[i], m_vkPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, 4, &draw);
+				vkCmdDrawIndexed(m_vkCommandBuffers[i], meshes[draw]->m_renderables[0].getIndexCount(), 1, meshes[draw]->m_renderables[0].getFirstIndex(), meshes[draw]->m_renderables[0].getFirstVertex(), 0);
+			}
 		}
 
 		vkCmdEndRenderPass(m_vkCommandBuffers[i]);

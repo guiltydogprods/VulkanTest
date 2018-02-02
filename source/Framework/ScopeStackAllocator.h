@@ -15,10 +15,11 @@ void destructorCall(void *ptr)
 class ScopeStack
 {
 public:
-	explicit ScopeStack(LinearAllocator& a, const char *scopeName = nullptr)
+	explicit ScopeStack(LinearAllocator& a, const char *scopeName = nullptr, bool bLog = true)
 		: m_alloc(a)
 		, m_rewindPoint(a.ptr())
 		, m_finalizerChain(nullptr)
+		, m_bLog(bLog)
 	{
 #ifdef MEM_DEBUG
 		if (scopeName)
@@ -37,24 +38,28 @@ public:
 #endif
 	}
 
-	explicit ScopeStack(ScopeStack& oldScope, const char *scopeName = nullptr)
+	explicit ScopeStack(ScopeStack& oldScope, const char *scopeName = nullptr, bool bLog = true)
 		: m_alloc(oldScope.m_alloc)
 		, m_rewindPoint(oldScope.m_alloc.ptr())
 		, m_finalizerChain(nullptr)
+		, m_bLog(bLog)
 	{
 #ifdef MEM_DEBUG
-		if (scopeName)
+		if (bLog)
 		{
-			strcpy_s(m_scopeName, sizeof(m_scopeName), scopeName);
-			print("Push Scope: (0x%016x) %s\n", (size_t)this, m_scopeName);
-			if (strlen(scopeName) < 1)
+			if (scopeName)
 			{
-				scopeName = (scopeName + 1) - 1;
+				strcpy_s(m_scopeName, sizeof(m_scopeName), scopeName);
+				print("Push Scope: (0x%016x) %s\n", (size_t)this, m_scopeName);
+				if (strlen(scopeName) < 1)
+				{
+					scopeName = (scopeName + 1) - 1;
+				}
 			}
-		}
-		else
-		{
-			print("Push Scope: (0x%016x) unnamed\n", (size_t)this);
+			else
+			{
+				print("Push Scope: (0x%016x) unnamed\n", (size_t)this);
+			}
 		}
 #endif
 	}
@@ -62,15 +67,16 @@ public:
 	~ScopeStack()
 	{
 #ifdef MEM_DEBUG
-		print("Pop Scope: (0x%016x) %s\n", (size_t)this, m_scopeName);
+		if (m_bLog)
+			print("Pop Scope: (0x%016x) %s\n", (size_t)this, m_scopeName);
 #endif
 		for (Finalizer *f = m_finalizerChain; f; f = f->chain)
 		{
 			(*f->fn)(objectFromFinalizer(f));
 		}
-		m_alloc.rewind(m_rewindPoint);
+		m_alloc.rewind(m_rewindPoint, m_bLog);
 	}
-#if 1
+
 	template <typename T, typename... Args>
 	T* newObject(Args&&... params)
 	{
@@ -89,26 +95,7 @@ public:
 		m_finalizerChain = f;
 		return result;
 	}
-#endif
-#if 0
-	template <typename T>
-	T* newObject() 
-	{
-		// Allocate memory for finalizer + object.
-		Finalizer* f = allocWithFinalizer(sizeof(T));
 
-		// Placement construct object in space after finalizer. Do this before
-		// linking in the finalizer for this object so nested calls will be
-		// finalized after this object.
-		T* result = new (objectFromFinalizer(f)) T;
-
-		// Link this finalizer onto the chain.
-		f->fn = &destructorCall<T>;
-		f->chain = m_finalizerChain;
-		m_finalizerChain = f;
-		return result;
-	}
-#endif
 	template <typename T>
 	T* newPOD()
 	{
@@ -124,6 +111,7 @@ private:
 	LinearAllocator& m_alloc;
 	void *m_rewindPoint;
 	Finalizer *m_finalizerChain;
+	bool m_bLog;
 #ifdef MEM_DEBUG
 	char m_scopeName[32];
 #endif

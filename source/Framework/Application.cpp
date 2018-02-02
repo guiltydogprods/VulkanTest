@@ -25,12 +25,12 @@ void Application::cleanup()
 
 }
 
-void Application::update()
+void Application::update(ScopeStack& frameScope)
 {
 
 }
 
-void Application::render()
+void Application::render(ScopeStack& frameScope)
 {
 
 }

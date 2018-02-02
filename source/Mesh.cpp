@@ -45,6 +45,7 @@ Mesh::Mesh(const char *filename, Buffer& vertexBuffer, int64_t& vertexBufferOffs
 
 Mesh::~Mesh()
 {
+	print("Mesh::dtor\n");
 	free(m_renderables);
 	free(m_transforms);
 	free(m_hierarchy);

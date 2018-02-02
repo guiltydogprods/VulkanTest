@@ -42,7 +42,7 @@ project "ThunderBall"
    }
 
    filter "configurations:Debug"
-      defines { "DEBUG" }
+      defines { "DEBUG", "MEM_DEBUG" }
       symbols  "On"
       libdirs { "lib/Debug" }
 

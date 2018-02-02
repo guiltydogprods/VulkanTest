@@ -50,15 +50,18 @@ int main(int argc, char *argv[])
 		glfwSetKeyCallback(window, key_callback);
 		glfwSetWindowSizeCallback(window, size_callback);
 
+		uint64_t frameNum = 0;
 		while (!glfwWindowShouldClose(window))
 		{
-			app->update();
-			app->render();
+			char frameName[16];
+			sprintf_s(frameName, sizeof(frameName), "Frame %lld", frameNum++);
+			ScopeStack frameScope(scopeStack, frameName, false);
+			app->update(frameScope);
+			app->render(frameScope);
 
 			glfwPollEvents();
 		}
 
-		app->cleanup();
 		glfwDestroyWindow(window);
 	}
 }
