@@ -109,11 +109,11 @@ struct Buffer;
 
 struct Mesh
 {
-	Mesh(const char *filename, Buffer& vertexBuffer, int64_t& vertexBufferOffset, Buffer& indexBuffer, int64_t& indexBufferOffset);
+	Mesh(const char *filename, RenderDevice& renderDevice, int64_t& vertexBufferOffset, int64_t& indexBufferOffset, ScopeStack& scopeStack);
 	~Mesh();
 
-	void		processMeshChunk(ChunkId *chunk, Buffer& vertexBuffer, int64_t& vertexBufferOffset, Buffer& indexBuffer, int64_t& indexBufferOffset);
-	uint8_t*	processMeshRecursive(uint8_t* ptr, uint32_t& renderableIndex, uint32_t& nodeIndex, int32_t parentIndex, Buffer& vertexBuffer, int64_t& vertexBufferOffset, Buffer& indexBuffer, int64_t& indexBufferOffset);
+	void		processMeshChunk(ChunkId *chunk, RenderDevice& renderDevice, int64_t& vertexBufferOffset, int64_t& indexBufferOffset, ScopeStack& scopeStack);
+	uint8_t*	processMeshRecursive(uint8_t* ptr, uint32_t& renderableIndex, uint32_t& nodeIndex, int32_t parentIndex, RenderDevice& renderDevice, int64_t& vertexBufferOffset, int64_t& indexBufferOffset);
 
 
 	MeshNode	*m_hierarchy;

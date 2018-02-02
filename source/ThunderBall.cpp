@@ -57,7 +57,10 @@ void ThunderBallApp::initialize(ScopeStack& scopeStack)
 	m_meshes = static_cast<Mesh **>(scopeStack.allocate(sizeof(Mesh *) * m_numMeshes));
 
 	for (uint32_t i = 0; i < m_numMeshes; ++i)
-		m_meshes[i] = scopeStack.newObject<Mesh>(meshes[i], *m_pRenderDevice->m_vertexBuffer, vertexBufferOffset, *m_pRenderDevice->m_indexBuffer, indexBufferOffset);
+	{
+		m_meshes[i] = scopeStack.newObject<Mesh>(meshes[i], *m_pRenderDevice, vertexBufferOffset, indexBufferOffset, scopeStack);
+		print("Mesh %d: Addr -> 0x%016x\n", i, reinterpret_cast<uint64_t>(m_meshes[i]));
+	}
 
 	m_pRenderDevice->createUniformBuffer(scopeStack);
 	m_pRenderDevice->finalize(m_meshes, m_numMeshes);

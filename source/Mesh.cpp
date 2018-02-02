@@ -3,7 +3,7 @@
 #include "Framework/File.h"
 #include "Vulkan/RenderDeviceVk.h"
 
-Mesh::Mesh(const char *filename, Buffer& vertexBuffer, int64_t& vertexBufferOffset, Buffer& indexBuffer, int64_t& indexBufferOffset)
+Mesh::Mesh(const char *filename, RenderDevice& renderDevice, int64_t& vertexBufferOffset, int64_t& indexBufferOffset, ScopeStack& scopeStack)
 	: m_hierarchy(nullptr)
 	, m_transforms(nullptr)
 	, m_renderables(nullptr)
@@ -32,7 +32,7 @@ Mesh::Mesh(const char *filename, Buffer& vertexBuffer, int64_t& vertexBufferOffs
 		}
 		else if (!strncmp(chunk->tag, "MESH", 4))
 		{
-			processMeshChunk(chunk, vertexBuffer, vertexBufferOffset, indexBuffer, indexBufferOffset);
+			processMeshChunk(chunk, renderDevice, vertexBufferOffset, indexBufferOffset, scopeStack);
 			bLoaded = true;
 		}
 		else
@@ -46,36 +46,33 @@ Mesh::Mesh(const char *filename, Buffer& vertexBuffer, int64_t& vertexBufferOffs
 Mesh::~Mesh()
 {
 	print("Mesh::dtor\n");
-	free(m_renderables);
-	free(m_transforms);
-	free(m_hierarchy);
-	m_renderables = 0;
-	m_transforms = 0;
-	m_hierarchy = 0;
 }
 
-void Mesh::processMeshChunk(ChunkId *chunk, Buffer& vertexBuffer, int64_t& vertexBufferOffset, Buffer& indexBuffer, int64_t& indexBufferOffset)
+void Mesh::processMeshChunk(ChunkId *chunk, RenderDevice& renderDevice, int64_t& vertexBufferOffset, int64_t& indexBufferOffset, ScopeStack& scopeStack)
 {
 
 	MeshChunk *meshChunk = (MeshChunk *)chunk;
 	uint8_t *ptr = (uint8_t *)chunk + sizeof(MeshChunk);
 	m_numNodes = meshChunk->numMeshes;
-	m_hierarchy = static_cast<MeshNode *>(malloc(sizeof(MeshNode) * m_numNodes));
-	m_transforms = static_cast<glm::mat4x4 *>(malloc(sizeof(glm::mat4x4) * m_numNodes));
+	m_hierarchy = static_cast<MeshNode *>(scopeStack.allocate(sizeof(MeshNode) * m_numNodes));
+	m_transforms = static_cast<glm::mat4x4 *>(scopeStack.allocate(sizeof(glm::mat4x4) * m_numNodes));
 	MeshInfo *info = (MeshInfo *)ptr;
 	m_numRenderables = info->numRenderables;;
-	m_renderables = static_cast<Renderable *>(malloc(sizeof(Renderable) * m_numRenderables));
+	m_renderables = static_cast<Renderable *>(scopeStack.allocate(sizeof(Renderable) * m_numRenderables));
 	uint32_t renderableIndex = 0;
 	uint32_t nodeIndex = 0;
 	int32_t parentIndex = -1;
 	for (uint32_t i = 0; i < meshChunk->numMeshes; ++i)
 	{
-		processMeshRecursive(ptr, renderableIndex, nodeIndex, parentIndex, vertexBuffer, vertexBufferOffset, indexBuffer, indexBufferOffset);
+		processMeshRecursive(ptr, renderableIndex, nodeIndex, parentIndex, renderDevice, vertexBufferOffset, indexBufferOffset);
 	}
 }
 
-uint8_t* Mesh::processMeshRecursive(uint8_t* ptr, uint32_t& renderableIndex, uint32_t& nodeIndex, int32_t parentIndex, Buffer& vertexBuffer, int64_t& vertexBufferOffset, Buffer& indexBuffer, int64_t& indexBufferOffset)
+uint8_t* Mesh::processMeshRecursive(uint8_t* ptr, uint32_t& renderableIndex, uint32_t& nodeIndex, int32_t parentIndex, RenderDevice& renderDevice, int64_t& vertexBufferOffset, int64_t& indexBufferOffset)
 {
+	Buffer& vertexBuffer = *renderDevice.m_vertexBuffer;
+	Buffer& indexBuffer = *renderDevice.m_indexBuffer;
+
 	MeshInfo *info = (MeshInfo *)ptr;
 	RenderableInfo* rendInfo = (RenderableInfo*)(ptr + sizeof(MeshInfo));
 
@@ -160,7 +157,7 @@ uint8_t* Mesh::processMeshRecursive(uint8_t* ptr, uint32_t& renderableIndex, uin
 	uint32_t numChildren = info->numChildren;
 	for (uint32_t i = 0; i < numChildren; ++i)
 	{
-		ptr = processMeshRecursive(ptr, renderableIndex, nodeIndex, parentIndex, vertexBuffer, vertexBufferOffset, indexBuffer, indexBufferOffset);
+		ptr = processMeshRecursive(ptr, renderableIndex, nodeIndex, parentIndex, renderDevice, vertexBufferOffset, indexBufferOffset);
 	}
 	return ptr;
 }
