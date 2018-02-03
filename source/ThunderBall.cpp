@@ -36,10 +36,10 @@ void ThunderBallApp::initialize(ScopeStack& scopeStack)
 	uint32_t indicesSize = 100000;
 
 	m_pRenderDevice->createVertexFormat();
-	m_pRenderDevice->m_vertexBuffer = scopeStack.newObject<Buffer>(*m_pRenderDevice, verticesSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	m_pRenderDevice->m_vertexBuffer = scopeStack.newObject<Buffer>(scopeStack, *m_pRenderDevice, verticesSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 	m_pRenderDevice->m_vertexBuffer->bindMemory();
 	int64_t vertexBufferOffset = 0;
-	m_pRenderDevice->m_indexBuffer = scopeStack.newObject<Buffer>(*m_pRenderDevice, indicesSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	m_pRenderDevice->m_indexBuffer = scopeStack.newObject<Buffer>(scopeStack, *m_pRenderDevice, indicesSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 	m_pRenderDevice->m_indexBuffer->bindMemory();
 	int64_t indexBufferOffset = 0;
 
@@ -49,7 +49,6 @@ void ThunderBallApp::initialize(ScopeStack& scopeStack)
 	for (uint32_t i = 0; i < m_numMeshes; ++i)
 	{
 		m_meshes[i] = scopeStack.newObject<Mesh>(meshes[i], *m_pRenderDevice, vertexBufferOffset, indexBufferOffset, scopeStack);
-		print("Mesh %d: Addr -> 0x%016x\n", i, reinterpret_cast<uint64_t>(m_meshes[i]));
 	}
 
 	m_pRenderDevice->createUniformBuffer(scopeStack);

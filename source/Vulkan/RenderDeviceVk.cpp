@@ -89,7 +89,7 @@ void RenderDevice::initialize(ScopeStack& scope, GLFWwindow *window)
 	createSurface(window);
 	createDevice(scope);
 	createSemaphores();
-	createSwapChain(&scope);	
+	createSwapChain(scope);	
 	createCommandPool();
 	createDepthBuffer(scope);
 	createTexture(scope, "stone34.dds");
@@ -613,14 +613,14 @@ void RenderDevice::createVertexFormat()
 
 void RenderDevice::createUniformBuffer(ScopeStack& scopeStack)
 {
-	m_uniformBuffer = scopeStack.newObject<Buffer>(*this, sizeof(UniformBufferData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+	m_uniformBuffer = scopeStack.newObject<Buffer>(scopeStack, *this, sizeof(UniformBufferData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 	m_uniformBuffer->bindMemory();
 }
 
-//void RenderDevice::createSwapChain(ScopeStack& scope)
-//{
-//	createSwapChain(&scope);
-//}
+void RenderDevice::createSwapChain(ScopeStack& scope)
+{
+	createSwapChain(&scope);
+}
 
 void RenderDevice::createSwapChain(ScopeStack *scope)
 {
@@ -1709,7 +1709,7 @@ MemAllocInfo MemoryBlock::allocate(VkDeviceSize size, VkDeviceSize alignment)
 	return info;
 }
 
-Buffer::Buffer(RenderDevice& renderDevice, VkDeviceSize size, VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags)
+Buffer::Buffer(ScopeStack& scope, RenderDevice& renderDevice, VkDeviceSize size, VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags)
 	: m_renderDevice(renderDevice)
 	, m_buffer(nullptr)
 	, m_memAllocInfo{nullptr, 0}
@@ -1732,13 +1732,15 @@ Buffer::Buffer(RenderDevice& renderDevice, VkDeviceSize size, VkBufferUsageFlags
 	m_allocatedSize = memReqs.size;
 
 	uint32_t memoryTypeIndex = renderDevice.getMemoryType(memReqs.memoryTypeBits, memoryPropertyFlags);	// , memAlloc.memoryTypeIndex);
-	m_memAllocInfo = renderDevice.allocateGpuMemory(memReqs.size, memReqs.alignment, memoryTypeIndex);
+//	m_memAllocInfo = renderDevice.allocateGpuMemory(memReqs.size, memReqs.alignment, memoryTypeIndex);
+	m_memAllocInfo = RenderDevice::MemoryManager::Instance().allocate(scope, memReqs.size, memReqs.alignment, memoryTypeIndex);
+
 }
 
 Buffer::~Buffer()
 {
 	vkDestroyBuffer(m_renderDevice.m_vkDevice, m_buffer, nullptr);
-	vkFreeMemory(m_renderDevice.m_vkDevice, m_memAllocInfo.memoryBlock, nullptr);
+//	vkFreeMemory(m_renderDevice.m_vkDevice, m_memAllocInfo.memoryBlock, nullptr);
 }
 
 void Buffer::bindMemory()
@@ -1794,5 +1796,4 @@ StagingBuffer::StagingBuffer(RenderDevice& renderDevice, VkDeviceSize size, VkBu
 StagingBuffer::~StagingBuffer()
 {
 	// Vulkan resources destroyed in base.
-	print("Staging ");
 }

@@ -52,6 +52,7 @@ struct RenderDevice
 	void createTexture(ScopeStack& scope, const char *filename);
 	void createVertexFormat();
 	void createUniformBuffer(ScopeStack& scope);
+	void createSwapChain(ScopeStack& scope);
 	void createSwapChain(ScopeStack* scope = nullptr);
 	void createRenderPass();
 	void createFramebuffers();
@@ -154,7 +155,7 @@ struct MemoryBlock
 
 struct Buffer
 {
-	Buffer(RenderDevice& renderDevice, VkDeviceSize size, VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags);
+	Buffer(ScopeStack& scope, RenderDevice& renderDevice, VkDeviceSize size, VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags);
 	virtual ~Buffer();
 
 	virtual void bindMemory();
