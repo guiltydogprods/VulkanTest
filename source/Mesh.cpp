@@ -45,7 +45,6 @@ Mesh::Mesh(const char *filename, RenderDevice& renderDevice, int64_t& vertexBuff
 
 Mesh::~Mesh()
 {
-	print("Mesh::dtor\n");
 }
 
 void Mesh::processMeshChunk(ChunkId *chunk, RenderDevice& renderDevice, int64_t& vertexBufferOffset, int64_t& indexBufferOffset, ScopeStack& scopeStack)

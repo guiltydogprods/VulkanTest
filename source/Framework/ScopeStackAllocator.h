@@ -3,6 +3,9 @@
 struct Finalizer
 {
 	void(*fn)(void *ptr);
+#ifdef MEM_DEBUG
+	const char *typeName;
+#endif
 	Finalizer *chain;
 };
 
@@ -72,6 +75,9 @@ public:
 #endif
 		for (Finalizer *f = m_finalizerChain; f; f = f->chain)
 		{
+#ifdef MEM_DEBUG
+			print("Deleting: %s (0x%016x)\n", f->typeName, objectFromFinalizer(f));
+#endif
 			(*f->fn)(objectFromFinalizer(f));
 		}
 		m_alloc.rewind(m_rewindPoint, m_bLog);
@@ -82,17 +88,25 @@ public:
 	{
 		// Allocate memory for finalizer + object.
 		Finalizer* f = allocWithFinalizer(sizeof(T));
+		// Link this finalizer onto the chain.
+		f->fn = &destructorCall<T>;
+#ifdef MEM_DEBUG
+		f->typeName = typeid(T).name();
+#endif
+		f->chain = m_finalizerChain;
+		m_finalizerChain = f;
+
+		void *address = objectFromFinalizer(f);
+#ifdef MEM_DEBUG
+		print("Allocating: %s (0x%016x) -> Finalizer (0x%016x)\n", f->typeName, address, f);
+#endif
 
 		// Placement construct object in space after finalizer. Do this before
 		// linking in the finalizer for this object so nested calls will be
 		// finalized after this object.
 		//		void *allocAddress = objectFromFinalizer(f);
-		T* result = new (objectFromFinalizer(f)) T(std::forward<Args>(params)...);
+		T* result = new (address) T(std::forward<Args>(params)...);
 
-		// Link this finalizer onto the chain.
-		f->fn = &destructorCall<T>;
-		f->chain = m_finalizerChain;
-		m_finalizerChain = f;
 		return result;
 	}
 

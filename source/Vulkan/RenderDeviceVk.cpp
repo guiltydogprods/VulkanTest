@@ -45,7 +45,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugReportFlagsEXT flags,
 	return VK_FALSE;
 }
 
-RenderDevice::RenderDevice()
+RenderDevice::RenderDevice(ScopeStack& scope)
 	: m_selectedDevice(0)
 	, m_vkInstance(nullptr)
 	, m_vkPhysicalDeviceCount(0)
@@ -75,26 +75,25 @@ RenderDevice::RenderDevice()
 
 	Application* app = Application::GetApplication();
 
-	initialize(app->getGLFWwindow());
+	initialize(scope, app->getGLFWwindow());
 }
 
 RenderDevice::~RenderDevice()
 {
-	print("RenderDevice::dtor...\n");
 	cleanup();
 }
 
-void RenderDevice::initialize(GLFWwindow *window)
+void RenderDevice::initialize(ScopeStack& scope, GLFWwindow *window)
 {
 	createInstance();
 	createSurface(window);
-	createDevice();
+	createDevice(scope);
 	createSemaphores();
-	createSwapChain();
+	createSwapChain(&scope);	
 	createCommandPool();
-	createDepthBuffer();
-	createTexture("stone34.dds");
-	createTexture("rock7.dds");
+	createDepthBuffer(scope);
+	createTexture(scope, "stone34.dds");
+	createTexture(scope, "rock7.dds");
 }
 
 void RenderDevice::finalize(Mesh **meshes, uint32_t numMeshes)
@@ -124,7 +123,6 @@ void RenderDevice::cleanupSwapChain()
 
 	vkDestroyImageView(m_vkDevice, m_vkDepthBufferView, nullptr);
 	vkDestroyImage(m_vkDevice, m_vkDepthBufferImage, nullptr);
-	vkFreeMemory(m_vkDevice, m_depthBufferMemAllocInfo.memoryBlock, nullptr);
 
 	vkDestroySwapchainKHR(m_vkDevice, m_vkSwapChain, nullptr);
 }
@@ -148,11 +146,11 @@ void RenderDevice::cleanup()
 		uint32_t index = (m_numTextures - i)-1;
 		vkDestroyImageView(m_vkDevice, m_vkTextureImageView[index], nullptr);
 		vkDestroyImage(m_vkDevice, m_vkTextureImage[index], nullptr);
-		vkFreeMemory(m_vkDevice, m_textureMemAllocInfo[index].memoryBlock, nullptr);
+//		vkFreeMemory(m_vkDevice, m_textureMemAllocInfo[index].memoryBlock, nullptr);
 	}
 	vkDestroyImageView(m_vkDevice, m_vkDepthBufferView, nullptr);
 	vkDestroyImage(m_vkDevice, m_vkDepthBufferImage, nullptr);
-	vkFreeMemory(m_vkDevice, m_depthBufferMemAllocInfo.memoryBlock, nullptr);
+//	vkFreeMemory(m_vkDevice, m_depthBufferMemAllocInfo.memoryBlock, nullptr);
 	vkDestroySwapchainKHR(m_vkDevice, m_vkSwapChain, nullptr);
 	vkDestroyCommandPool(m_vkDevice, m_vkCommandPool, nullptr);
 	vkDestroySemaphore(m_vkDevice, m_vkImageAvailableSemaphore, nullptr);
@@ -381,7 +379,7 @@ void RenderDevice::createSurface(GLFWwindow *window)
 	}
 }
 
-void RenderDevice::createDevice()
+void RenderDevice::createDevice(ScopeStack& scope)
 {
 	vkEnumeratePhysicalDevices(m_vkInstance, &m_vkPhysicalDeviceCount, nullptr);
 #ifdef USE_SECONDARY_DEVICE
@@ -389,11 +387,11 @@ void RenderDevice::createDevice()
 		m_selectedDevice = 1;
 #endif
 
-	m_vkPhysicalDevices = new VkPhysicalDevice [m_vkPhysicalDeviceCount];
+	m_vkPhysicalDevices = static_cast<VkPhysicalDevice *>(scope.allocate(sizeof(VkPhysicalDevice) * m_vkPhysicalDeviceCount));
 	vkEnumeratePhysicalDevices(m_vkInstance, &m_vkPhysicalDeviceCount, m_vkPhysicalDevices);
-	m_vkPhysicalDeviceProperties = new VkPhysicalDeviceProperties [m_vkPhysicalDeviceCount];
-	m_vkPhysicalDeviceMemoryProperties = new VkPhysicalDeviceMemoryProperties [m_vkPhysicalDeviceCount];
-	m_vkPhysicalDeviceFeatures = new VkPhysicalDeviceFeatures [m_vkPhysicalDeviceCount];
+	m_vkPhysicalDeviceProperties = static_cast<VkPhysicalDeviceProperties *>(scope.allocate(sizeof(VkPhysicalDeviceProperties) * m_vkPhysicalDeviceCount));
+	m_vkPhysicalDeviceMemoryProperties = static_cast<VkPhysicalDeviceMemoryProperties *>(scope.allocate(sizeof(VkPhysicalDeviceMemoryProperties) * m_vkPhysicalDeviceCount));
+	m_vkPhysicalDeviceFeatures = static_cast<VkPhysicalDeviceFeatures *>(scope.allocate(sizeof(VkPhysicalDeviceFeatures) * m_vkPhysicalDeviceCount));
 	for (uint32_t i = 0; i < m_vkPhysicalDeviceCount; ++i)
 	{
 		vkGetPhysicalDeviceProperties(m_vkPhysicalDevices[i], &m_vkPhysicalDeviceProperties[i]);
@@ -404,7 +402,7 @@ void RenderDevice::createDevice()
 	print("Selected Device: %s\n", m_vkPhysicalDeviceProperties[m_selectedDevice].deviceName);
 
 	vkGetPhysicalDeviceQueueFamilyProperties(m_vkPhysicalDevices[m_selectedDevice], &m_vkQueueFamilyPropertiesCount, nullptr);
-	m_vkQueueFamilyProperties = new VkQueueFamilyProperties [m_vkQueueFamilyPropertiesCount];
+	m_vkQueueFamilyProperties = static_cast<VkQueueFamilyProperties *>(scope.allocate(sizeof(VkQueueFamilyProperties) * m_vkQueueFamilyPropertiesCount));
 	vkGetPhysicalDeviceQueueFamilyProperties(m_vkPhysicalDevices[m_selectedDevice], &m_vkQueueFamilyPropertiesCount, m_vkQueueFamilyProperties);
 
 	bool foundGraphicsQueueFamily = false;
@@ -524,7 +522,7 @@ void RenderDevice::createCommandPool()
 	}
 }
 
-void RenderDevice::createDepthBuffer()
+void RenderDevice::createDepthBuffer(ScopeStack& scope)
 {
 	m_vkDepthBufferFormat = VK_FORMAT_D32_SFLOAT;
 
@@ -556,8 +554,8 @@ void RenderDevice::createDepthBuffer()
 	VkMemoryRequirements memRequirements;
 	vkGetImageMemoryRequirements(m_vkDevice, m_vkDepthBufferImage, &memRequirements);
 	uint32_t memoryTypeIndex = getMemoryType(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-//	m_depthBufferMemAllocInfo = MemoryManager::Instance().allocate(memRequirements.size, memRequirements.alignment, memoryTypeIndex);
-	m_depthBufferMemAllocInfo = allocateGpuMemory(memRequirements.size, memRequirements.alignment, memoryTypeIndex);
+	m_depthBufferMemAllocInfo = MemoryManager::Instance().allocate(scope, memRequirements.size, memRequirements.alignment, memoryTypeIndex);
+//	m_depthBufferMemAllocInfo = allocateGpuMemory(memRequirements.size, memRequirements.alignment, memoryTypeIndex);
 	if (vkBindImageMemory(m_vkDevice, m_vkDepthBufferImage, m_depthBufferMemAllocInfo.memoryBlock, m_depthBufferMemAllocInfo.offset) != VK_SUCCESS)
 	{
 		print("failed to bind memory to image\n");
@@ -619,7 +617,12 @@ void RenderDevice::createUniformBuffer(ScopeStack& scopeStack)
 	m_uniformBuffer->bindMemory();
 }
 
-void RenderDevice::createSwapChain()
+//void RenderDevice::createSwapChain(ScopeStack& scope)
+//{
+//	createSwapChain(&scope);
+//}
+
+void RenderDevice::createSwapChain(ScopeStack *scope)
 {
 	VkSurfaceCapabilitiesKHR surfaceCapabilities;
 	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_vkPhysicalDevices[m_selectedDevice], m_vkSurface, &surfaceCapabilities);
@@ -669,7 +672,8 @@ void RenderDevice::createSwapChain()
 	VkResult res = vkCreateSwapchainKHR(m_vkDevice, &swapchainCreateInfo, nullptr, &m_vkSwapChain);
 
 	vkGetSwapchainImagesKHR(m_vkDevice, m_vkSwapChain, &m_vkSwapChainImageCount, nullptr);
-	m_vkSwapChainImages = new VkImage [m_vkSwapChainImageCount];
+	if (m_vkSwapChainImages == nullptr && scope != nullptr)
+		m_vkSwapChainImages = static_cast<VkImage *>(scope->allocate(sizeof(VkImage) * m_vkSwapChainImageCount));
 	if (vkGetSwapchainImagesKHR(m_vkDevice, m_vkSwapChain, &m_vkSwapChainImageCount, m_vkSwapChainImages) != VK_SUCCESS) 
 	{
 		print("failed to acquire swap chain images\n");
@@ -684,11 +688,72 @@ void RenderDevice::recreateSwapChain()
 	cleanupSwapChain();
 
 	createSwapChain();
-	createDepthBuffer();
+	recreateDepthBuffer();
 	createRenderPass();
 	createGraphicsPipeline();
 	createFramebuffers();
 	createCommandBuffers(m_meshes, m_numMeshes);
+}
+
+void RenderDevice::recreateDepthBuffer()
+{
+//	m_vkDepthBufferFormat = VK_FORMAT_D32_SFLOAT;
+
+	VkImageCreateInfo  imageCreateInfo = {};
+	imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+	imageCreateInfo.pNext = nullptr;
+	imageCreateInfo.flags = 0;
+	imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
+	imageCreateInfo.format = m_vkDepthBufferFormat;
+	imageCreateInfo.extent.width = m_vkSwapChainExtent.width;
+	imageCreateInfo.extent.height = m_vkSwapChainExtent.height;
+	imageCreateInfo.extent.depth = 1;
+	imageCreateInfo.mipLevels = 1;
+	imageCreateInfo.arrayLayers = 1;
+	imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+	imageCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+	imageCreateInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+	imageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	imageCreateInfo.queueFamilyIndexCount = 0;
+	imageCreateInfo.pQueueFamilyIndices = nullptr;
+	imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_PREINITIALIZED;
+
+	if (vkCreateImage(m_vkDevice, &imageCreateInfo, nullptr, &m_vkDepthBufferImage) != VK_SUCCESS)
+	{
+		print("failed to create image for depth buffer\n");
+		exit(1);
+	}
+
+	VkMemoryRequirements memRequirements;
+	vkGetImageMemoryRequirements(m_vkDevice, m_vkDepthBufferImage, &memRequirements);
+	uint32_t memoryTypeIndex = getMemoryType(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	if (vkBindImageMemory(m_vkDevice, m_vkDepthBufferImage, m_depthBufferMemAllocInfo.memoryBlock, m_depthBufferMemAllocInfo.offset) != VK_SUCCESS)
+	{
+		print("failed to bind memory to image\n");
+		exit(1);
+	}
+
+	VkImageSubresourceRange subresourceRange = {};
+	subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+	subresourceRange.baseMipLevel = 0;
+	subresourceRange.levelCount = 1;
+	subresourceRange.layerCount = 1;
+
+	VkImageViewCreateInfo viewInfo = {};
+	viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	viewInfo.image = m_vkDepthBufferImage;
+	viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	viewInfo.format = m_vkDepthBufferFormat;
+	viewInfo.subresourceRange = subresourceRange;
+	if (vkCreateImageView(m_vkDevice, &viewInfo, nullptr, &m_vkDepthBufferView) != VK_SUCCESS)
+	{
+		print("failed to create image view\n");
+		exit(EXIT_FAILURE);
+	}
+
+	VkCommandBuffer commandBuffer = beginSingleUseCommandBuffer();
+	transitionImageLayout(commandBuffer, m_vkDepthBufferImage, subresourceRange, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+	endSingleUseCommandBuffer(commandBuffer);
 }
 
 void RenderDevice::createRenderPass()
@@ -1280,7 +1345,7 @@ typedef unsigned long DWORD;
 #define FOURCC_DXT3	MAKEFOURCC('D', 'X', 'T', '3')
 #define FOURCC_DXT5	MAKEFOURCC('D', 'X', 'T', '5')
 
-void RenderDevice::createTexture(const char *filename)
+void RenderDevice::createTexture(ScopeStack& scope, const char *filename)
 {
 	File file(filename);
 
@@ -1386,8 +1451,8 @@ void RenderDevice::createTexture(const char *filename)
 	vkGetImageMemoryRequirements(m_vkDevice, m_vkTextureImage[texIndex], &memRequirements);
 
 	uint32_t memoryTypeIndex = getMemoryType(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);	// , dstAllocInfo.memoryTypeIndex);
-//	m_textureMemAllocInfo[texIndex] = MemoryManager::Instance().allocate(memRequirements.size, memRequirements.alignment, memoryTypeIndex);
-	m_textureMemAllocInfo[texIndex] = allocateGpuMemory(memRequirements.size, memRequirements.alignment, memoryTypeIndex);
+	m_textureMemAllocInfo[texIndex] = MemoryManager::Instance().allocate(scope, memRequirements.size, memRequirements.alignment, memoryTypeIndex);
+//	m_textureMemAllocInfo[texIndex] = allocateGpuMemory(memRequirements.size, memRequirements.alignment, memoryTypeIndex);
 	if (vkBindImageMemory(m_vkDevice, m_vkTextureImage[texIndex], m_textureMemAllocInfo[texIndex].memoryBlock, m_textureMemAllocInfo[texIndex].offset) != VK_SUCCESS)
 	{
 		print("failed to bind memory to image\n");
@@ -1586,14 +1651,14 @@ RenderDevice::MemoryManager& RenderDevice::MemoryManager::Instance()
 	return ms_instance;
 }
 
-MemAllocInfo RenderDevice::MemoryManager::allocate(VkDeviceSize size, VkDeviceSize alignment, uint32_t typeIndex)
+MemAllocInfo RenderDevice::MemoryManager::allocate(ScopeStack& scope, VkDeviceSize size, VkDeviceSize alignment, uint32_t typeIndex)
 {
-	MemoryBlock& memBlock = findBlock(size, alignment, typeIndex);
+	MemoryBlock& memBlock = findBlock(scope, size, alignment, typeIndex);
 	print("allocate size = %ld, alighment = %ld, typeIndex = %d\n", size, alignment, typeIndex);
 	return memBlock.allocate(size, alignment);
 }
 
-MemoryBlock& RenderDevice::MemoryManager::findBlock(VkDeviceSize size, VkDeviceSize alignment, uint32_t typeIndex)
+MemoryBlock& RenderDevice::MemoryManager::findBlock(ScopeStack& scope, VkDeviceSize size, VkDeviceSize alignment, uint32_t typeIndex)
 {
 	for (uint32_t i = 0; i < m_numBlocks; ++i)
 	{
@@ -1603,7 +1668,7 @@ MemoryBlock& RenderDevice::MemoryManager::findBlock(VkDeviceSize size, VkDeviceS
 		}
 	}
 	AssertMsg((m_pRenderDevice), "MemoryManager::m_pRenderDevice has not been set.\n");
-	MemoryBlock *newBlock = m_blocks[m_numBlocks++] = new MemoryBlock(m_pRenderDevice->m_vkDevice, 256 * 1024 * 1024, typeIndex);
+	MemoryBlock *newBlock = m_blocks[m_numBlocks++] = static_cast<MemoryBlock *>(scope.newObject<MemoryBlock>(m_pRenderDevice->m_vkDevice, 256 * 1024 * 1024, typeIndex));
 
 	return *newBlock;
 }
@@ -1672,7 +1737,6 @@ Buffer::Buffer(RenderDevice& renderDevice, VkDeviceSize size, VkBufferUsageFlags
 
 Buffer::~Buffer()
 {
-	print("Buffer::dtor\n");
 	vkDestroyBuffer(m_renderDevice.m_vkDevice, m_buffer, nullptr);
 	vkFreeMemory(m_renderDevice.m_vkDevice, m_memAllocInfo.memoryBlock, nullptr);
 }

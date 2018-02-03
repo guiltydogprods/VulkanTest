@@ -23,7 +23,7 @@ void ThunderBallApp::initialize(ScopeStack& scopeStack)
 {
 	m_scopeStack = &scopeStack;
 
-	m_pRenderDevice = scopeStack.newObject<RenderDevice>();
+	m_pRenderDevice = scopeStack.newObject<RenderDevice>(scopeStack);
 
 	const char *meshes[] =
 	{

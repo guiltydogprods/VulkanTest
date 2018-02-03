@@ -15,7 +15,7 @@ const uint32_t kMaxBlocks = 16;
 
 struct RenderDevice
 {
-	RenderDevice();
+	RenderDevice(ScopeStack& scopeStack);
 	~RenderDevice();
 
 	struct MemoryManager
@@ -23,8 +23,8 @@ struct RenderDevice
 		friend struct RenderDevice;
 	public:
 		static MemoryManager& Instance();
-		MemAllocInfo allocate(VkDeviceSize size, VkDeviceSize alignment, uint32_t typeIndex);
-		MemoryBlock& findBlock(VkDeviceSize size, VkDeviceSize alignment, uint32_t typeIndex);
+		MemAllocInfo allocate(ScopeStack& scope, VkDeviceSize size, VkDeviceSize alignment, uint32_t typeIndex);
+		MemoryBlock& findBlock(ScopeStack& scope, VkDeviceSize size, VkDeviceSize alignment, uint32_t typeIndex);
 
 
 		RenderDevice *m_pRenderDevice;
@@ -36,7 +36,7 @@ struct RenderDevice
 		MemoryManager();
 	};
 
-	void initialize(GLFWwindow *window);
+	void initialize(ScopeStack& scope, GLFWwindow *window);
 	void finalize(Mesh **meshes, uint32_t numMeshes);
 	void cleanup();
 	void update();
@@ -45,20 +45,21 @@ struct RenderDevice
 	void cleanupSwapChain();
 	void createInstance();
 	void createSurface(GLFWwindow *window);
-	void createDevice();
+	void createDevice(ScopeStack& scope);
 	void createSemaphores();
 	void createCommandPool();
-	void createDepthBuffer();
-	void createTexture(const char *filename);
+	void createDepthBuffer(ScopeStack& scope);
+	void createTexture(ScopeStack& scope, const char *filename);
 	void createVertexFormat();
-	void createUniformBuffer(ScopeStack& scopeStack);
-	void createSwapChain();
-	void recreateSwapChain();
+	void createUniformBuffer(ScopeStack& scope);
+	void createSwapChain(ScopeStack* scope = nullptr);
 	void createRenderPass();
 	void createFramebuffers();
 	void createGraphicsPipeline();
 	void createDescriptorSet();
 	void createCommandBuffers(Mesh **meshes, uint32_t numMeshes);
+	void recreateSwapChain();
+	void recreateDepthBuffer();
 
 	int32_t getMemoryType(uint32_t typeBits, VkFlags properties);
 	MemAllocInfo allocateGpuMemory(VkDeviceSize size, VkDeviceSize alignment, uint32_t typeIndex);
