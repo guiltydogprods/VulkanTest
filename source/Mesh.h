@@ -109,10 +109,10 @@ struct Buffer;
 
 struct Mesh
 {
-	Mesh(const char *filename, RenderDevice& renderDevice, int64_t& vertexBufferOffset, int64_t& indexBufferOffset, ScopeStack& scopeStack);
+	Mesh(ScopeStack& scopeStack, const char *filename, RenderDevice& renderDevice, int64_t& vertexBufferOffset, int64_t& indexBufferOffset);
 	~Mesh();
 
-	void		processMeshChunk(ChunkId *chunk, RenderDevice& renderDevice, int64_t& vertexBufferOffset, int64_t& indexBufferOffset, ScopeStack& scopeStack);
+	void		processMeshChunk(ScopeStack& scopeStack, ChunkId *chunk, RenderDevice& renderDevice, int64_t& vertexBufferOffset, int64_t& indexBufferOffset);
 	uint8_t*	processMeshRecursive(uint8_t* ptr, uint32_t& renderableIndex, uint32_t& nodeIndex, int32_t parentIndex, RenderDevice& renderDevice, int64_t& vertexBufferOffset, int64_t& indexBufferOffset);
 
 

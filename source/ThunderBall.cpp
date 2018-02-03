@@ -48,7 +48,7 @@ void ThunderBallApp::initialize(ScopeStack& scopeStack)
 
 	for (uint32_t i = 0; i < m_numMeshes; ++i)
 	{
-		m_meshes[i] = scopeStack.newObject<Mesh>(meshes[i], *m_pRenderDevice, vertexBufferOffset, indexBufferOffset, scopeStack);
+		m_meshes[i] = scopeStack.newObject<Mesh>(scopeStack, meshes[i], *m_pRenderDevice, vertexBufferOffset, indexBufferOffset);
 	}
 
 	m_pRenderDevice->createUniformBuffer(scopeStack);

@@ -3,7 +3,7 @@
 #include "Framework/File.h"
 #include "Vulkan/RenderDeviceVk.h"
 
-Mesh::Mesh(const char *filename, RenderDevice& renderDevice, int64_t& vertexBufferOffset, int64_t& indexBufferOffset, ScopeStack& scopeStack)
+Mesh::Mesh(ScopeStack& scopeStack, const char *filename, RenderDevice& renderDevice, int64_t& vertexBufferOffset, int64_t& indexBufferOffset)
 	: m_hierarchy(nullptr)
 	, m_transforms(nullptr)
 	, m_renderables(nullptr)
@@ -32,7 +32,7 @@ Mesh::Mesh(const char *filename, RenderDevice& renderDevice, int64_t& vertexBuff
 		}
 		else if (!strncmp(chunk->tag, "MESH", 4))
 		{
-			processMeshChunk(chunk, renderDevice, vertexBufferOffset, indexBufferOffset, scopeStack);
+			processMeshChunk(scopeStack, chunk, renderDevice, vertexBufferOffset, indexBufferOffset);
 			bLoaded = true;
 		}
 		else
@@ -47,7 +47,7 @@ Mesh::~Mesh()
 {
 }
 
-void Mesh::processMeshChunk(ChunkId *chunk, RenderDevice& renderDevice, int64_t& vertexBufferOffset, int64_t& indexBufferOffset, ScopeStack& scopeStack)
+void Mesh::processMeshChunk(ScopeStack& scopeStack, ChunkId *chunk, RenderDevice& renderDevice, int64_t& vertexBufferOffset, int64_t& indexBufferOffset)
 {
 
 	MeshChunk *meshChunk = (MeshChunk *)chunk;
