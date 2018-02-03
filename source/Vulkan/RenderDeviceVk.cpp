@@ -1801,4 +1801,27 @@ StagingBuffer::StagingBuffer(RenderDevice& renderDevice, VkDeviceSize size, VkBu
 StagingBuffer::~StagingBuffer()
 {
 	// Vulkan resources destroyed in base.
+	vkDestroyBuffer(m_renderDevice.m_vkDevice, m_buffer, nullptr);
+	vkFreeMemory(m_renderDevice.m_vkDevice, m_memAllocInfo.memoryBlock, nullptr);
+}
+
+void StagingBuffer::bindMemory()
+{
+	VkResult res = vkBindBufferMemory(m_renderDevice.m_vkDevice, m_buffer, m_memAllocInfo.memoryBlock, m_memAllocInfo.offset);
+	AssertMsg(res == VK_SUCCESS, "vkBindBuffer failed (res = %d).", static_cast<int32_t>(res));
+}
+
+void *StagingBuffer::mapMemory(VkDeviceSize offset, VkDeviceSize size)
+{
+	AssertMsg((m_memoryPropertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT), "Error: VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT not set.\n");
+	void *data = nullptr;
+	VkResult res = vkMapMemory(m_renderDevice.m_vkDevice, m_memAllocInfo.memoryBlock, offset, size, 0, &data);
+	AssertMsg(res == VK_SUCCESS, "vkMapMemory failed (res = %d).", static_cast<int32_t>(res));
+	return data;
+}
+
+void StagingBuffer::unmapMemory()
+{
+	AssertMsg((m_memoryPropertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) != 0, "Error: VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT not set.\n");
+	vkUnmapMemory(m_renderDevice.m_vkDevice, m_memAllocInfo.memoryBlock);
 }
