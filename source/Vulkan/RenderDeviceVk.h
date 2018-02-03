@@ -156,11 +156,11 @@ struct MemoryBlock
 struct Buffer
 {
 	Buffer(ScopeStack& scope, RenderDevice& renderDevice, VkDeviceSize size, VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags);
-	virtual ~Buffer();
+	~Buffer();
 
-	virtual void bindMemory();
-	virtual void *mapMemory(VkDeviceSize offset = 0, VkDeviceSize size = VK_WHOLE_SIZE);
-	virtual void unmapMemory();
+	void bindMemory();
+	void *mapMemory(VkDeviceSize offset = 0, VkDeviceSize size = VK_WHOLE_SIZE);
+	void unmapMemory();
 
 protected:
 	Buffer(RenderDevice& renderDevice)
@@ -180,9 +180,21 @@ public:
 	VkMemoryPropertyFlags	m_memoryPropertyFlags;
 };
 
-struct StagingBuffer : public Buffer
+struct StagingBuffer
 {
+public:
 	StagingBuffer(RenderDevice& renderDevice, VkDeviceSize size, VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags);
 	~StagingBuffer();
+
+	void bindMemory();
+	void *mapMemory(VkDeviceSize offset = 0, VkDeviceSize size = VK_WHOLE_SIZE);
+	void unmapMemory();
+
+	RenderDevice&			m_renderDevice;
+	VkBuffer				m_buffer;
+	MemAllocInfo			m_memAllocInfo;
+	VkDeviceSize			m_allocatedSize;
+	VkBufferUsageFlags		m_usageFlags;
+	VkMemoryPropertyFlags	m_memoryPropertyFlags;
 };
 

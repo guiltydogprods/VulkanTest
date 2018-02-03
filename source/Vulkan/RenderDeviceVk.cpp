@@ -1766,7 +1766,12 @@ void Buffer::unmapMemory()
 
 
 StagingBuffer::StagingBuffer(RenderDevice& renderDevice, VkDeviceSize size, VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags)
-	: Buffer(renderDevice)
+	: m_renderDevice(renderDevice)
+	, m_buffer(nullptr)
+	, m_memAllocInfo{ nullptr, 0 }
+	, m_allocatedSize(0)
+	, m_usageFlags(usageFlags)
+	, m_memoryPropertyFlags(memoryPropertyFlags)
 {
 	AssertMsg((size > 0), "StagingBuffer size is 0 bytes.\n");
 	AssertMsg((usageFlags & (VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT)) != 0, "StagingBuffer requires either VK_BUFFER_USAGE_TRANSFER_SRC_BIT or VK_BUFFER_USAGE_TRANSFRER_DST_BIT to be set.\n");
