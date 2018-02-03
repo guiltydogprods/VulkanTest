@@ -96,16 +96,11 @@ public:
 		f->chain = m_finalizerChain;
 		m_finalizerChain = f;
 
-		void *address = objectFromFinalizer(f);
+		void *allocAddress = objectFromFinalizer(f);
 #ifdef MEM_DEBUG
-		print("Allocating: %s (0x%016x) -> Finalizer (0x%016x)\n", f->typeName, address, f);
+		print("Allocating: %s (0x%016x) -> Finalizer (0x%016x)\n", f->typeName, allocAddress, f);
 #endif
-
-		// Placement construct object in space after finalizer. Do this before
-		// linking in the finalizer for this object so nested calls will be
-		// finalized after this object.
-		//		void *allocAddress = objectFromFinalizer(f);
-		T* result = new (address) T(std::forward<Args>(params)...);
+		T* result = new (allocAddress) T(std::forward<Args>(params)...);
 
 		return result;
 	}
