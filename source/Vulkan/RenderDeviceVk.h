@@ -129,10 +129,10 @@ struct RenderDevice
 	VkImageView							m_vkDepthBufferView;
 	MemAllocInfo						m_depthBufferMemAllocInfo;
 
+	VkSampler							m_vkSampler[2];
 	VkImage								m_vkTextureImage[2];
-	MemAllocInfo						m_textureMemAllocInfo[2];
 	VkImageView							m_vkTextureImageView[2];
-	VkSampler							m_vkSampler;
+	MemAllocInfo						m_textureMemAllocInfo[2];
 	uint32_t							m_numTextures;
 
 	Mesh								**m_meshes;
