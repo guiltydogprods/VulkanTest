@@ -1347,6 +1347,36 @@ typedef unsigned char BYTE;
 typedef unsigned short WORD;
 typedef unsigned long DWORD;
 
+struct DDS_PIXELFORMAT
+{
+	DWORD dwSize;
+	DWORD dwFlags;
+	DWORD dwFourCC;
+	DWORD dwRGBBitCount;
+	DWORD dwRBitMask;
+	DWORD dwGBitMask;
+	DWORD dwBBitMask;
+	DWORD dwABitMask;
+};
+
+struct DDS_HEADER
+{
+	DWORD           dwSize;
+	DWORD           dwFlags;
+	DWORD           dwHeight;
+	DWORD           dwWidth;
+	DWORD           dwPitchOrLinearSize;
+	DWORD           dwDepth;
+	DWORD           dwMipMapCount;
+	DWORD           dwReserved1[11];
+	DDS_PIXELFORMAT ddspf;
+	DWORD           dwCaps;
+	DWORD           dwCaps2;
+	DWORD           dwCaps3;
+	DWORD           dwCaps4;
+	DWORD           dwReserved2;
+};
+
 #ifndef MAKEFOURCC
 #define MAKEFOURCC(ch0, ch1, ch2, ch3)                              \
                 ((DWORD)(BYTE)(ch0) | ((DWORD)(BYTE)(ch1) << 8) |   \
@@ -1368,14 +1398,15 @@ void RenderDevice::createTexture(ScopeStack& scope, const char *filename)
 		exit(EXIT_FAILURE);
 	}
 
-	uint8_t *header = file.m_buffer + 4;
-	// get the surface desc
-	uint32_t headerSize = *(uint32_t *)&(header[0]);
-	uint32_t texHeight = *(uint32_t *)&(header[8]);
-	uint32_t texWidth = *(uint32_t *)&(header[12]);
-	uint32_t linearSize = *(uint32_t *)&(header[16]);
-	uint32_t mipMapCount = *(uint32_t *)&(header[24]);
-	uint32_t fourCC = *(uint32_t *)&(header[80]);
+	DDS_HEADER *header = reinterpret_cast<DDS_HEADER *>(file.m_buffer + 4);
+	uint32_t headerSize = header->dwSize;
+	uint32_t flags = header->dwFlags;
+	uint32_t texHeight = header->dwHeight;
+	uint32_t texWidth = header->dwWidth;
+	uint32_t linearSize = header->dwPitchOrLinearSize;
+	uint32_t texDepth = header->dwDepth;
+	uint32_t mipMapCount = header->dwMipMapCount;
+	uint32_t fourCC = header->ddspf.dwFourCC;
 
 	uint32_t components = (fourCC == FOURCC_DXT1) ? 3 : 4;
 
@@ -1395,7 +1426,7 @@ void RenderDevice::createTexture(ScopeStack& scope, const char *filename)
 		return;
 	}
 
-	uint8_t *srcData = header + headerSize;
+	uint8_t *srcData = reinterpret_cast<uint8_t *>(header) + headerSize;
 
 	uint32_t blockSize = (format == VK_FORMAT_BC1_RGB_UNORM_BLOCK || format == VK_FORMAT_BC1_RGBA_UNORM_BLOCK) ? 8 : 16;
 	uint64_t size = file.m_sizeInBytes - 128;
