@@ -21,7 +21,15 @@ size_t File::load()
 {
 	m_buffer = static_cast<uint8_t *>(malloc(m_sizeInBytes));
 	size_t bytesRead = fread(m_buffer, 1, m_sizeInBytes, m_fptr);
-	AssertMsg(bytesRead == m_sizeInBytes, "Warning: File load failed.\n");
+	AssertMsg(bytesRead == m_sizeInBytes, "Warning: File::load failed.\n");
+
+	return bytesRead;
+}
+
+size_t File::readBytes(size_t bytesToRead, void *buffer)
+{
+	size_t bytesRead = fread(buffer, 1, bytesToRead, m_fptr);
+	AssertMsg(bytesRead == bytesToRead, "Warning: File::readBytes failed.\n");
 
 	return bytesRead;
 }

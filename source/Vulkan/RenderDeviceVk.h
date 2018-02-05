@@ -4,6 +4,7 @@ struct Buffer;
 struct Mesh;
 struct MemoryBlock;
 struct MemorySubBlock;
+struct Texture;
 
 struct MemAllocInfo
 {
@@ -49,7 +50,6 @@ struct RenderDevice
 	void createSemaphores();
 	void createCommandPool();
 	void createDepthBuffer(ScopeStack& scope);
-	void createTexture(ScopeStack& scope, const char *filename);
 	void createVertexFormat();
 	void createUniformBuffer(ScopeStack& scope);
 	void createSwapChain(ScopeStack& scope);
@@ -129,11 +129,8 @@ struct RenderDevice
 	VkImageView							m_vkDepthBufferView;
 	MemAllocInfo						m_depthBufferMemAllocInfo;
 
-	VkSampler							m_vkSampler[2];
-	VkImage								m_vkTextureImage[2];
-	VkImageView							m_vkTextureImageView[2];
-	MemAllocInfo						m_textureMemAllocInfo[2];
 	uint32_t							m_numTextures;
+	Texture								*m_textures[2];
 
 	Mesh								**m_meshes;
 	uint32_t							m_numMeshes;
@@ -196,5 +193,17 @@ public:
 	VkDeviceSize			m_allocatedSize;
 	VkBufferUsageFlags		m_usageFlags;
 	VkMemoryPropertyFlags	m_memoryPropertyFlags;
+};
+
+struct Texture
+{
+	Texture(ScopeStack& scope, RenderDevice& renderDevice, const char *filename);
+	~Texture();
+
+	RenderDevice&	m_renderDevice;
+	VkImage			m_vkImage;
+	VkImageView		m_vkImageView;
+	VkSampler		m_vkSampler;
+	MemAllocInfo	m_memAllocInfo;
 };
 

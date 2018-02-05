@@ -92,8 +92,9 @@ void RenderDevice::initialize(ScopeStack& scope, GLFWwindow *window)
 	createSwapChain(scope);	
 	createCommandPool();
 	createDepthBuffer(scope);
-	createTexture(scope, "stone34.dds");
-	createTexture(scope, "rock7.dds");
+	m_textures[0] = scope.newObject<Texture>(scope, *this, "stone34.dds");
+	m_textures[1] = scope.newObject<Texture>(scope, *this, "rock7.dds");
+	m_numTextures = 2;
 }
 
 void RenderDevice::finalize(Mesh **meshes, uint32_t numMeshes)
@@ -140,15 +141,7 @@ void RenderDevice::cleanup()
 		vkDestroyFramebuffer(m_vkDevice, m_vkSwapChainFramebuffers[i], nullptr);
 		vkDestroyImageView(m_vkDevice, m_vkSwapChainImageViews[i], nullptr);
 	}
-//	vkDestroySampler(m_vkDevice, m_vkSampler, nullptr);
-	for (uint32_t i = 0; i < m_numTextures; ++i)
-	{
-		uint32_t index = (m_numTextures - i)-1;
-		vkDestroySampler(m_vkDevice, m_vkSampler[index], nullptr);
-		vkDestroyImageView(m_vkDevice, m_vkTextureImageView[index], nullptr);
-		vkDestroyImage(m_vkDevice, m_vkTextureImage[index], nullptr);
-//		vkFreeMemory(m_vkDevice, m_textureMemAllocInfo[index].memoryBlock, nullptr);
-	}
+
 	vkDestroyImageView(m_vkDevice, m_vkDepthBufferView, nullptr);
 	vkDestroyImage(m_vkDevice, m_vkDepthBufferImage, nullptr);
 //	vkFreeMemory(m_vkDevice, m_depthBufferMemAllocInfo.memoryBlock, nullptr);
@@ -1120,15 +1113,7 @@ void RenderDevice::createDescriptorSet()
 	writeDescriptorSet[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	writeDescriptorSet[0].descriptorCount = 1;
 	writeDescriptorSet[0].pBufferInfo = &descriptorBufferInfo;
-/*
-	writeDescriptorSet[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	writeDescriptorSet[1].dstSet = m_vkDescriptorSet;
-	writeDescriptorSet[1].dstBinding = 1;
-	writeDescriptorSet[1].dstArrayElement = 0;
-	writeDescriptorSet[1].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
-	writeDescriptorSet[1].descriptorCount = 1;
-	writeDescriptorSet[1].pImageInfo = &imageInfo;
-*/
+
 	VkDescriptorImageInfo *imageInfo = static_cast<VkDescriptorImageInfo *>(alloca(sizeof(VkDescriptorImageInfo) * m_numTextures));
 	memset(imageInfo, 0, sizeof(VkDescriptorImageInfo) * m_numTextures);
 
@@ -1139,10 +1124,10 @@ void RenderDevice::createDescriptorSet()
 	{
 		imageInfo[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		imageInfo[i].imageView = VK_NULL_HANDLE;
-		imageInfo[i].sampler = m_vkSampler[i];
+		imageInfo[i].sampler = m_textures[i]->m_vkSampler;
 
 		texImageInfo[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		texImageInfo[i].imageView = m_vkTextureImageView[i];
+		texImageInfo[i].imageView = m_textures[i]->m_vkImageView;
 		texImageInfo[i].sampler = VK_NULL_HANDLE;
 	}
 
@@ -1388,176 +1373,6 @@ struct DDS_HEADER
 #define FOURCC_DXT3	MAKEFOURCC('D', 'X', 'T', '3')
 #define FOURCC_DXT5	MAKEFOURCC('D', 'X', 'T', '5')
 
-void RenderDevice::createTexture(ScopeStack& scope, const char *filename)
-{
-	File file(filename);
-	file.load();
-
-	const char *ptr = (const char *)file.m_buffer;
-	if (strncmp(ptr, "DDS ", 4) != 0)
-	{
-		print("File is not in .dds format.\n");
-		exit(EXIT_FAILURE);
-	}
-
-	DDS_HEADER *header = reinterpret_cast<DDS_HEADER *>(file.m_buffer + 4);
-	uint32_t headerSize = header->dwSize;
-	uint32_t flags = header->dwFlags;
-	uint32_t texHeight = header->dwHeight;
-	uint32_t texWidth = header->dwWidth;
-	uint32_t linearSize = header->dwPitchOrLinearSize;
-	uint32_t texDepth = header->dwDepth;
-	uint32_t mipMapCount = header->dwMipMapCount;
-	uint32_t fourCC = header->ddspf.dwFourCC;
-
-	uint32_t components = (fourCC == FOURCC_DXT1) ? 3 : 4;
-
-	VkFormat format;
-	switch (fourCC)
-	{
-	case FOURCC_DXT1:
-		format = VK_FORMAT_BC1_RGBA_UNORM_BLOCK;
-		break;
-	case FOURCC_DXT3:
-		format = VK_FORMAT_BC3_UNORM_BLOCK;
-		break;
-	case FOURCC_DXT5:
-		format = VK_FORMAT_BC5_UNORM_BLOCK;
-		break;
-	default:
-		return;
-	}
-
-	uint8_t *srcData = reinterpret_cast<uint8_t *>(header) + headerSize;
-
-	uint32_t blockSize = (format == VK_FORMAT_BC1_RGB_UNORM_BLOCK || format == VK_FORMAT_BC1_RGBA_UNORM_BLOCK) ? 8 : 16;
-	uint64_t size = file.m_sizeInBytes - 128;
-
-	StagingBuffer stagingBuffer(*this, size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-	
-	uint8_t *data = static_cast<uint8_t *>(stagingBuffer.mapMemory());
-	if (data)
-	{
-		memcpy(data, srcData, size);
-		stagingBuffer.unmapMemory();
-		stagingBuffer.bindMemory();
-	}
-
-	// Setup buffer copy regions for each mip level
-	VkBufferImageCopy *bufferCopyRegions = static_cast<VkBufferImageCopy *>(alloca(sizeof(VkBufferImageCopy) * mipMapCount));
-	memset(bufferCopyRegions, 0, sizeof(VkBufferImageCopy) * mipMapCount);
-	uint32_t offset = 0;
-	uint32_t mipWidth = texWidth;
-	uint32_t mipHeight = texHeight;
-	for (uint32_t i = 0; i < mipMapCount && (mipWidth || mipHeight); i++)
-	{
-		uint32_t regionSize = ((mipWidth + 3) / 4) * ((mipHeight + 3) / 4) * blockSize;
-
-		VkBufferImageCopy &bufferCopyRegion = bufferCopyRegions[i];
-		bufferCopyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		bufferCopyRegion.imageSubresource.mipLevel = i;
-		bufferCopyRegion.imageSubresource.baseArrayLayer = 0;
-		bufferCopyRegion.imageSubresource.layerCount = 1;
-		bufferCopyRegion.imageExtent.width = mipWidth;
-		bufferCopyRegion.imageExtent.height = mipHeight;
-		bufferCopyRegion.imageExtent.depth = 1;
-		bufferCopyRegion.bufferOffset = offset;
-		offset += regionSize > 8 ? regionSize : 8;
-		mipWidth /= 2;
-		mipHeight /= 2;
-	}
-	uint32_t texIndex = m_numTextures++;
-
-	VkImageCreateInfo  imageCreateInfo = {};
-	imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-	imageCreateInfo.pNext = nullptr;
-	imageCreateInfo.flags = 0;
-	imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
-	imageCreateInfo.format = format;
-	imageCreateInfo.extent.width = texWidth;
-	imageCreateInfo.extent.height = texHeight;
-	imageCreateInfo.extent.depth = 1;
-	imageCreateInfo.mipLevels = mipMapCount;
-	imageCreateInfo.arrayLayers = 1;
-	imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-	imageCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-	imageCreateInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-	imageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	imageCreateInfo.queueFamilyIndexCount = 0;
-	imageCreateInfo.pQueueFamilyIndices = nullptr;
-	imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	if (vkCreateImage(m_vkDevice, &imageCreateInfo, nullptr, &m_vkTextureImage[texIndex]) != VK_SUCCESS)
-	{
-		print("failed to create image for %s\n", filename);
-		exit(1);
-	}
-
-	VkMemoryRequirements memRequirements;
-	vkGetImageMemoryRequirements(m_vkDevice, m_vkTextureImage[texIndex], &memRequirements);
-
-	uint32_t memoryTypeIndex = getMemoryType(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);	// , dstAllocInfo.memoryTypeIndex);
-	m_textureMemAllocInfo[texIndex] = MemoryManager::Instance().allocate(scope, memRequirements.size, memRequirements.alignment, memoryTypeIndex);
-//	m_textureMemAllocInfo[texIndex] = allocateGpuMemory(memRequirements.size, memRequirements.alignment, memoryTypeIndex);
-	if (vkBindImageMemory(m_vkDevice, m_vkTextureImage[texIndex], m_textureMemAllocInfo[texIndex].memoryBlock, m_textureMemAllocInfo[texIndex].offset) != VK_SUCCESS)
-	{
-		print("failed to bind memory to image\n");
-		exit(1);
-	}
-
-	VkCommandBuffer commandBuffer = beginSingleUseCommandBuffer();
-
-	VkImageSubresourceRange subresourceRange = {};
-	subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	subresourceRange.baseMipLevel = 0;
-	subresourceRange.levelCount = mipMapCount;
-	subresourceRange.layerCount = 1;
-
-	transitionImageLayout(commandBuffer, m_vkTextureImage[texIndex], subresourceRange, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-	// Copy mip levels from staging buffer
-	vkCmdCopyBufferToImage(commandBuffer, stagingBuffer.m_buffer, m_vkTextureImage[texIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipMapCount, bufferCopyRegions);
-	transitionImageLayout(commandBuffer, m_vkTextureImage[texIndex], subresourceRange, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-	endSingleUseCommandBuffer(commandBuffer);
-
-	VkImageViewCreateInfo viewInfo = {};
-	viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-	viewInfo.image = m_vkTextureImage[texIndex];
-	viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-	viewInfo.format = format;
-	viewInfo.subresourceRange = subresourceRange;
-	if (vkCreateImageView(m_vkDevice, &viewInfo, nullptr, &m_vkTextureImageView[texIndex]) != VK_SUCCESS)
-	{
-		print("failed to create image view\n");
-		exit(EXIT_FAILURE);
-	}
-
-//	if (m_vkSampler == nullptr)
-//	{
-		VkSamplerCreateInfo samplerInfo = {};
-		samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-		samplerInfo.magFilter = VK_FILTER_LINEAR;
-		samplerInfo.minFilter = VK_FILTER_LINEAR;
-		samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-		samplerInfo.mipLodBias = 0.0f;
-		samplerInfo.minLod = 0.0f;
-		samplerInfo.maxLod = (float)mipMapCount;
-		samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-		samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-		samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-		samplerInfo.anisotropyEnable = VK_TRUE;
-		samplerInfo.maxAnisotropy = 8;
-		samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-		samplerInfo.unnormalizedCoordinates = VK_FALSE;
-		samplerInfo.compareEnable = VK_FALSE;
-		samplerInfo.compareOp = VK_COMPARE_OP_NEVER;
-		if (vkCreateSampler(m_vkDevice, &samplerInfo, nullptr, &m_vkSampler[texIndex]) != VK_SUCCESS)
-		{
-			print("failed to create sampler.\n");
-			exit(EXIT_FAILURE);
-		}
-//	}
-}
-
 VkCommandBuffer RenderDevice::beginSingleUseCommandBuffer()
 {
 	VkCommandBufferAllocateInfo allocInfo = {};
@@ -1796,6 +1611,7 @@ void Buffer::bindMemory()
 
 void *Buffer::mapMemory(VkDeviceSize offset, VkDeviceSize size)
 {
+	AssertMsg((size == VK_WHOLE_SIZE || size <= m_allocatedSize), "Error: requested size too large.\n");
 	AssertMsg((m_memoryPropertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT), "Error: VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT not set.\n");
 	void *data = nullptr;
 	VkResult res = vkMapMemory(m_renderDevice.m_vkDevice, m_memAllocInfo.memoryBlock, offset, size, 0, &data);
@@ -1858,6 +1674,7 @@ void StagingBuffer::bindMemory()
 
 void *StagingBuffer::mapMemory(VkDeviceSize offset, VkDeviceSize size)
 {
+	AssertMsg((size == VK_WHOLE_SIZE || size <= m_allocatedSize), "Error: requested size too large.\n");
 	AssertMsg((m_memoryPropertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT), "Error: VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT not set.\n");
 	void *data = nullptr;
 	VkResult res = vkMapMemory(m_renderDevice.m_vkDevice, m_memAllocInfo.memoryBlock, offset, size, 0, &data);
@@ -1869,4 +1686,181 @@ void StagingBuffer::unmapMemory()
 {
 	AssertMsg((m_memoryPropertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) != 0, "Error: VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT not set.\n");
 	vkUnmapMemory(m_renderDevice.m_vkDevice, m_memAllocInfo.memoryBlock);
+}
+
+Texture::Texture(ScopeStack& scope, RenderDevice& renderDevice, const char *filename) 
+	: m_renderDevice(renderDevice)
+	, m_vkImage(nullptr)
+	, m_vkImageView(nullptr)
+	, m_memAllocInfo{ nullptr, 0 }
+{
+	File file(filename);
+
+	uint8_t buffer[sizeof(DDS_HEADER)+4];
+	size_t bytesRead = file.readBytes(sizeof(buffer), buffer);
+
+	const char *ptr = (const char *)buffer;
+	if (strncmp(ptr, "DDS ", 4) != 0)
+	{
+		print("File is not in .dds format.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	DDS_HEADER *header = reinterpret_cast<DDS_HEADER *>(buffer + 4);
+	uint32_t headerSize = header->dwSize;
+	uint32_t flags = header->dwFlags;
+	uint32_t texHeight = header->dwHeight;
+	uint32_t texWidth = header->dwWidth;
+	uint32_t linearSize = header->dwPitchOrLinearSize;
+	uint32_t texDepth = header->dwDepth;
+	uint32_t mipMapCount = header->dwMipMapCount;
+	uint32_t fourCC = header->ddspf.dwFourCC;
+
+	uint32_t components = (fourCC == FOURCC_DXT1) ? 3 : 4;
+
+	VkFormat format;
+	switch (fourCC)
+	{
+	case FOURCC_DXT1:
+		format = VK_FORMAT_BC1_RGBA_UNORM_BLOCK;
+		break;
+	case FOURCC_DXT3:
+		format = VK_FORMAT_BC3_UNORM_BLOCK;
+		break;
+	case FOURCC_DXT5:
+		format = VK_FORMAT_BC5_UNORM_BLOCK;
+		break;
+	default:
+		return;
+	}
+
+	uint32_t blockSize = (format == VK_FORMAT_BC1_RGB_UNORM_BLOCK || format == VK_FORMAT_BC1_RGBA_UNORM_BLOCK) ? 8 : 16;
+	uint64_t size = file.m_sizeInBytes - 128;
+
+	StagingBuffer stagingBuffer(renderDevice, size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+	uint8_t *data = static_cast<uint8_t *>(stagingBuffer.mapMemory());
+	if (data)
+	{
+		file.readBytes(size, data);
+		stagingBuffer.unmapMemory();
+		stagingBuffer.bindMemory();
+	}
+
+	// Setup buffer copy regions for each mip level
+	VkBufferImageCopy *bufferCopyRegions = static_cast<VkBufferImageCopy *>(alloca(sizeof(VkBufferImageCopy) * mipMapCount));
+	memset(bufferCopyRegions, 0, sizeof(VkBufferImageCopy) * mipMapCount);
+	uint32_t offset = 0;
+	uint32_t mipWidth = texWidth;
+	uint32_t mipHeight = texHeight;
+	for (uint32_t i = 0; i < mipMapCount && (mipWidth || mipHeight); i++)
+	{
+		uint32_t regionSize = ((mipWidth + 3) / 4) * ((mipHeight + 3) / 4) * blockSize;
+
+		VkBufferImageCopy &bufferCopyRegion = bufferCopyRegions[i];
+		bufferCopyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		bufferCopyRegion.imageSubresource.mipLevel = i;
+		bufferCopyRegion.imageSubresource.baseArrayLayer = 0;
+		bufferCopyRegion.imageSubresource.layerCount = 1;
+		bufferCopyRegion.imageExtent.width = mipWidth;
+		bufferCopyRegion.imageExtent.height = mipHeight;
+		bufferCopyRegion.imageExtent.depth = 1;
+		bufferCopyRegion.bufferOffset = offset;
+		offset += regionSize > 8 ? regionSize : 8;
+		mipWidth /= 2;
+		mipHeight /= 2;
+	}
+
+	VkImageCreateInfo  imageCreateInfo = {};
+	imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+	imageCreateInfo.pNext = nullptr;
+	imageCreateInfo.flags = 0;
+	imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
+	imageCreateInfo.format = format;
+	imageCreateInfo.extent.width = texWidth;
+	imageCreateInfo.extent.height = texHeight;
+	imageCreateInfo.extent.depth = 1;
+	imageCreateInfo.mipLevels = mipMapCount;
+	imageCreateInfo.arrayLayers = 1;
+	imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+	imageCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+	imageCreateInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+	imageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	imageCreateInfo.queueFamilyIndexCount = 0;
+	imageCreateInfo.pQueueFamilyIndices = nullptr;
+	imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	if (vkCreateImage(renderDevice.m_vkDevice, &imageCreateInfo, nullptr, &m_vkImage) != VK_SUCCESS)
+	{
+		print("failed to create image for %s\n", filename);
+		exit(1);
+	}
+
+	VkMemoryRequirements memRequirements;
+	vkGetImageMemoryRequirements(renderDevice.m_vkDevice, m_vkImage, &memRequirements);
+
+	uint32_t memoryTypeIndex = renderDevice.getMemoryType(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);	// , dstAllocInfo.memoryTypeIndex);
+	m_memAllocInfo = RenderDevice::MemoryManager::Instance().allocate(scope, memRequirements.size, memRequirements.alignment, memoryTypeIndex);
+	//	m_textureMemAllocInfo[texIndex] = allocateGpuMemory(memRequirements.size, memRequirements.alignment, memoryTypeIndex);
+	if (vkBindImageMemory(renderDevice.m_vkDevice, m_vkImage, m_memAllocInfo.memoryBlock, m_memAllocInfo.offset) != VK_SUCCESS)
+	{
+		print("failed to bind memory to image\n");
+		exit(1);
+	}
+
+	VkCommandBuffer commandBuffer = renderDevice.beginSingleUseCommandBuffer();
+
+	VkImageSubresourceRange subresourceRange = {};
+	subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	subresourceRange.baseMipLevel = 0;
+	subresourceRange.levelCount = mipMapCount;
+	subresourceRange.layerCount = 1;
+
+	renderDevice.transitionImageLayout(commandBuffer, m_vkImage, subresourceRange, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	// Copy mip levels from staging buffer
+	vkCmdCopyBufferToImage(commandBuffer, stagingBuffer.m_buffer, m_vkImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipMapCount, bufferCopyRegions);
+	renderDevice.transitionImageLayout(commandBuffer, m_vkImage, subresourceRange, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+	renderDevice.endSingleUseCommandBuffer(commandBuffer);
+
+	VkImageViewCreateInfo viewInfo = {};
+	viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	viewInfo.image = m_vkImage;
+	viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	viewInfo.format = format;
+	viewInfo.subresourceRange = subresourceRange;
+	if (vkCreateImageView(renderDevice.m_vkDevice, &viewInfo, nullptr, &m_vkImageView) != VK_SUCCESS)
+	{
+		print("failed to create image view\n");
+		exit(EXIT_FAILURE);
+	}
+
+	VkSamplerCreateInfo samplerInfo = {};
+	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+	samplerInfo.magFilter = VK_FILTER_LINEAR;
+	samplerInfo.minFilter = VK_FILTER_LINEAR;
+	samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+	samplerInfo.mipLodBias = 0.0f;
+	samplerInfo.minLod = 0.0f;
+	samplerInfo.maxLod = (float)mipMapCount;
+	samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	samplerInfo.anisotropyEnable = VK_TRUE;
+	samplerInfo.maxAnisotropy = 8;
+	samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+	samplerInfo.unnormalizedCoordinates = VK_FALSE;
+	samplerInfo.compareEnable = VK_FALSE;
+	samplerInfo.compareOp = VK_COMPARE_OP_NEVER;
+	if (vkCreateSampler(renderDevice.m_vkDevice, &samplerInfo, nullptr, &m_vkSampler) != VK_SUCCESS)
+	{
+		print("failed to create sampler.\n");
+		exit(EXIT_FAILURE);
+	}
+}
+
+Texture::~Texture()
+{
+	vkDestroySampler(m_renderDevice.m_vkDevice, m_vkSampler, nullptr);
+	vkDestroyImageView(m_renderDevice.m_vkDevice, m_vkImageView, nullptr);
+	vkDestroyImage(m_renderDevice.m_vkDevice, m_vkImage, nullptr);
 }
