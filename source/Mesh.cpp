@@ -14,6 +14,7 @@ Mesh::Mesh(ScopeStack& scopeStack, const char *filename, RenderDevice& renderDev
 	, m_numMaterials(0)
 {
 	File file(filename);
+	file.load();
 
 	uint8_t *buffer = file.m_buffer;
 

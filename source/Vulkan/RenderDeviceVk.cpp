@@ -1325,6 +1325,7 @@ MemAllocInfo RenderDevice::allocateGpuMemory(VkDeviceSize size, VkDeviceSize ali
 VkShaderModule RenderDevice::createShaderModule(const char *filename)
 {
 	File file(filename, "Shaders/");
+	file.load();
 
 	VkShaderModuleCreateInfo createInfo = {};
 	createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -1390,6 +1391,7 @@ struct DDS_HEADER
 void RenderDevice::createTexture(ScopeStack& scope, const char *filename)
 {
 	File file(filename);
+	file.load();
 
 	const char *ptr = (const char *)file.m_buffer;
 	if (strncmp(ptr, "DDS ", 4) != 0)
