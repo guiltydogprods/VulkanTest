@@ -1514,7 +1514,7 @@ RenderDevice::MemoryManager& RenderDevice::MemoryManager::Instance()
 MemAllocInfo RenderDevice::MemoryManager::allocate(ScopeStack& scope, VkDeviceSize size, VkDeviceSize alignment, uint32_t typeIndex)
 {
 	MemoryBlock& memBlock = findBlock(scope, size, alignment, typeIndex);
-	print("allocate size = %ld, alighment = %ld, typeIndex = %d\n", size, alignment, typeIndex);
+	print("GPU allocate size = %ld, alighment = %ld, typeIndex = %d\n", size, alignment, typeIndex);
 	return memBlock.allocate(size, alignment);
 }
 

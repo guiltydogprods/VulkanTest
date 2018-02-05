@@ -98,7 +98,7 @@ public:
 
 		void *allocAddress = objectFromFinalizer(f);
 #ifdef MEM_DEBUG
-		print("Allocating: %s (0x%016x) -> Finalizer (0x%016x)\n", f->typeName, allocAddress, f);
+		print("Allocating: %s (0x%016x, %ld bytes) -> Finalizer (0x%016x, %ld bytes)\n", f->typeName, allocAddress, sizeof(T), f, sizeof(Finalizer));
 #endif
 		T* result = new (allocAddress) T(std::forward<Args>(params)...);
 
