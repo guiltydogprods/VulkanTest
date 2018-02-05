@@ -148,6 +148,7 @@ struct MemoryBlock
 	VkDeviceSize m_size;
 	VkDeviceSize m_offset;
 	uint32_t m_typeIndex;
+	uint32_t m_pad[3];
 };
 
 struct Buffer
