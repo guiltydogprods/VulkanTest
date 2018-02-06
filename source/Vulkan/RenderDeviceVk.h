@@ -2,17 +2,42 @@
 
 struct Buffer;
 struct Mesh;
+struct MemAllocInfo;
 struct MemoryBlock;
 struct MemorySubBlock;
 struct Texture;
 
+const uint32_t kMaxBlocks = 16;
+
+struct MemoryBlock
+{
+	MemoryBlock(VkDevice device, VkDeviceSize size, uint32_t typeIndex);
+	MemoryBlock() {};
+	~MemoryBlock();
+
+	MemAllocInfo& allocate(ScopeStack& scope, VkDeviceSize size, VkDeviceSize alignment);
+
+	VkDevice m_vkDevice;
+	VkDeviceMemory m_memory;
+	VkDeviceSize m_size;
+	VkDeviceSize m_offset;
+	uint32_t m_typeIndex;
+	uint32_t m_pad[3];
+};
+
 struct MemAllocInfo
 {
-	VkDeviceMemory memoryBlock;
+	MemAllocInfo(MemoryBlock& _memoryBlock, VkDeviceSize _offset)
+		: memoryBlock(_memoryBlock), offset(_offset) {}
+
+	~MemAllocInfo() { memoryBlock.m_offset = offset; }
+
+	MemoryBlock& memoryBlock;
 	VkDeviceSize offset;
 };
 
-const uint32_t kMaxBlocks = 16;
+static MemoryBlock _dummyMemoryBlock = {};
+static MemAllocInfo _dummyMemAllocInfo = { _dummyMemoryBlock, 0 };
 
 struct RenderDevice
 {
@@ -24,7 +49,7 @@ struct RenderDevice
 		friend struct RenderDevice;
 	public:
 		static MemoryManager& Instance();
-		MemAllocInfo allocate(ScopeStack& scope, VkDeviceSize size, VkDeviceSize alignment, uint32_t typeIndex);
+		MemAllocInfo& allocate(ScopeStack& scope, VkDeviceSize size, VkDeviceSize alignment, uint32_t typeIndex);
 		MemoryBlock& findBlock(ScopeStack& scope, VkDeviceSize size, VkDeviceSize alignment, uint32_t typeIndex);
 
 
@@ -63,7 +88,7 @@ struct RenderDevice
 	void recreateDepthBuffer();
 
 	int32_t getMemoryType(uint32_t typeBits, VkFlags properties);
-	MemAllocInfo allocateGpuMemory(VkDeviceSize size, VkDeviceSize alignment, uint32_t typeIndex);
+	VkDeviceMemory allocateGpuMemory(VkDeviceSize size, VkDeviceSize alignment, uint32_t typeIndex);
 	VkShaderModule createShaderModule(const char *filename);
 	VkCommandBuffer beginSingleUseCommandBuffer();
 	void endSingleUseCommandBuffer(VkCommandBuffer commandBuffer);
@@ -127,28 +152,16 @@ struct RenderDevice
 	VkFormat							m_vkDepthBufferFormat;
 	VkImage								m_vkDepthBufferImage;
 	VkImageView							m_vkDepthBufferView;
-	MemAllocInfo						m_depthBufferMemAllocInfo;
+//	MemAllocInfo&						m_depthBufferMemAllocInfo;
+	std::reference_wrapper<MemAllocInfo> m_depthBufferMemAllocInfo;
+
+//	VkDeviceMemory						m_depthBufferMemory;
 
 	uint32_t							m_numTextures;
 	Texture								*m_textures[2];
 
 	Mesh								**m_meshes;
 	uint32_t							m_numMeshes;
-};
-
-struct MemoryBlock
-{
-	MemoryBlock(VkDevice device, VkDeviceSize size, uint32_t typeIndex);
-	~MemoryBlock();
-
-	MemAllocInfo allocate(VkDeviceSize size, VkDeviceSize alignment);
-
-	VkDevice m_vkDevice;
-	VkDeviceMemory m_memory;
-	VkDeviceSize m_size;
-	VkDeviceSize m_offset;
-	uint32_t m_typeIndex;
-	uint32_t m_pad[3];
 };
 
 struct Buffer
@@ -164,18 +177,18 @@ protected:
 	Buffer(RenderDevice& renderDevice)
 		: m_renderDevice(renderDevice)
 		, m_buffer(nullptr)
-		, m_memAllocInfo{ nullptr, 0 }
+		, m_memAllocInfo(_dummyMemAllocInfo)
 		, m_allocatedSize(0)
 		, m_usageFlags(0)
 		, m_memoryPropertyFlags(0) {}
 
 public:
-	RenderDevice&			m_renderDevice;
-	VkBuffer				m_buffer;
-	MemAllocInfo			m_memAllocInfo;
-	VkDeviceSize			m_allocatedSize;
-	VkBufferUsageFlags		m_usageFlags;
-	VkMemoryPropertyFlags	m_memoryPropertyFlags;
+	RenderDevice&						 m_renderDevice;
+	VkBuffer							 m_buffer;
+	std::reference_wrapper<MemAllocInfo> m_memAllocInfo;
+	VkDeviceSize						 m_allocatedSize;
+	VkBufferUsageFlags					 m_usageFlags;
+	VkMemoryPropertyFlags				 m_memoryPropertyFlags;
 };
 
 struct StagingBuffer
@@ -190,7 +203,8 @@ public:
 
 	RenderDevice&			m_renderDevice;
 	VkBuffer				m_buffer;
-	MemAllocInfo			m_memAllocInfo;
+//	MemAllocInfo			m_memAllocInfo;
+	VkDeviceMemory			m_memory;
 	VkDeviceSize			m_allocatedSize;
 	VkBufferUsageFlags		m_usageFlags;
 	VkMemoryPropertyFlags	m_memoryPropertyFlags;

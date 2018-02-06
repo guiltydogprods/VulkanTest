@@ -6,7 +6,7 @@ Texture::Texture(ScopeStack& scope, RenderDevice& renderDevice, const char *file
 	: m_renderDevice(renderDevice)
 	, m_vkImage(nullptr)
 	, m_vkImageView(nullptr)
-	, m_memAllocInfo{ nullptr, 0 }
+	, m_memAllocInfo{_dummyMemAllocInfo}
 {
 	File file(filename);
 
@@ -115,7 +115,7 @@ Texture::Texture(ScopeStack& scope, RenderDevice& renderDevice, const char *file
 	uint32_t memoryTypeIndex = renderDevice.getMemoryType(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);	// , dstAllocInfo.memoryTypeIndex);
 	m_memAllocInfo = RenderDevice::MemoryManager::Instance().allocate(scope, memRequirements.size, memRequirements.alignment, memoryTypeIndex);
 	//	m_textureMemAllocInfo[texIndex] = allocateGpuMemory(memRequirements.size, memRequirements.alignment, memoryTypeIndex);
-	if (vkBindImageMemory(renderDevice.m_vkDevice, m_vkImage, m_memAllocInfo.memoryBlock, m_memAllocInfo.offset) != VK_SUCCESS)
+	if (vkBindImageMemory(renderDevice.m_vkDevice, m_vkImage, m_memAllocInfo.get().memoryBlock.m_memory, m_memAllocInfo.get().offset) != VK_SUCCESS)
 	{
 		print("failed to bind memory to image\n");
 		exit(1);

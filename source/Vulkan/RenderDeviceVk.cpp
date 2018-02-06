@@ -69,6 +69,7 @@ RenderDevice::RenderDevice(ScopeStack& scope)
 	, m_vkSwapChainFramebuffers(nullptr)
 	, m_vkCommandBuffers(nullptr)
 //	, m_vkSampler(nullptr)
+	, m_depthBufferMemAllocInfo(_dummyMemAllocInfo)
 	, m_numTextures(0)
 	, m_meshes(nullptr)
 	, m_numMeshes(0)
@@ -552,7 +553,7 @@ void RenderDevice::createDepthBuffer(ScopeStack& scope)
 	uint32_t memoryTypeIndex = getMemoryType(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 	m_depthBufferMemAllocInfo = MemoryManager::Instance().allocate(scope, memRequirements.size, memRequirements.alignment, memoryTypeIndex);
 //	m_depthBufferMemAllocInfo = allocateGpuMemory(memRequirements.size, memRequirements.alignment, memoryTypeIndex);
-	if (vkBindImageMemory(m_vkDevice, m_vkDepthBufferImage, m_depthBufferMemAllocInfo.memoryBlock, m_depthBufferMemAllocInfo.offset) != VK_SUCCESS)
+	if (vkBindImageMemory(m_vkDevice, m_vkDepthBufferImage, m_depthBufferMemAllocInfo.get().memoryBlock.m_memory, m_depthBufferMemAllocInfo.get().offset) != VK_SUCCESS)
 	{
 		print("failed to bind memory to image\n");
 		exit(1);
@@ -723,7 +724,7 @@ void RenderDevice::recreateDepthBuffer()
 	VkMemoryRequirements memRequirements;
 	vkGetImageMemoryRequirements(m_vkDevice, m_vkDepthBufferImage, &memRequirements);
 	uint32_t memoryTypeIndex = getMemoryType(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-	if (vkBindImageMemory(m_vkDevice, m_vkDepthBufferImage, m_depthBufferMemAllocInfo.memoryBlock, m_depthBufferMemAllocInfo.offset) != VK_SUCCESS)
+	if (vkBindImageMemory(m_vkDevice, m_vkDepthBufferImage, m_depthBufferMemAllocInfo.get().memoryBlock.m_memory, m_depthBufferMemAllocInfo.get().offset) != VK_SUCCESS)
 	{
 		print("failed to bind memory to image\n");
 		exit(1);
@@ -1104,7 +1105,7 @@ void RenderDevice::createDescriptorSet()
 	// Update descriptor set with uniform binding
 	VkDescriptorBufferInfo descriptorBufferInfo = {};
 	descriptorBufferInfo.buffer = m_uniformBuffer->m_buffer; //m_vkUniformBuffer;
-	descriptorBufferInfo.offset = m_uniformBuffer->m_memAllocInfo.offset;	// 0;
+	descriptorBufferInfo.offset = m_uniformBuffer->m_memAllocInfo.get().offset;	// 0;
 	descriptorBufferInfo.range = sizeof(UniformBufferData);
 
 	VkWriteDescriptorSet writeDescriptorSet[5] = {};
@@ -1295,18 +1296,17 @@ int32_t RenderDevice::getMemoryType(uint32_t typeBits, VkMemoryPropertyFlags pro
 	return -1;
 }
 
-MemAllocInfo RenderDevice::allocateGpuMemory(VkDeviceSize size, VkDeviceSize alignment, uint32_t typeIndex)
+VkDeviceMemory RenderDevice::allocateGpuMemory(VkDeviceSize size, VkDeviceSize alignment, uint32_t typeIndex)
 {
 	VkMemoryAllocateInfo allocInfo = {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	allocInfo.allocationSize = size;
 	allocInfo.memoryTypeIndex = typeIndex;
-	MemAllocInfo memoryInfo = {};
-	memoryInfo.offset = 0;
-	VkResult res = vkAllocateMemory(m_vkDevice, &allocInfo, nullptr, &memoryInfo.memoryBlock);	// &m_vkDepthBufferMemory);
+	VkDeviceMemory memory;
+	VkResult res = vkAllocateMemory(m_vkDevice, &allocInfo, nullptr, &memory);	// &m_vkDepthBufferMemory);
 	AssertMsg(res == VK_SUCCESS, "failed to allocate memory for image\n");
 
-	return memoryInfo;
+	return memory;
 }
 
 VkShaderModule RenderDevice::createShaderModule(const char *filename)
@@ -1469,11 +1469,11 @@ RenderDevice::MemoryManager& RenderDevice::MemoryManager::Instance()
 	return ms_instance;
 }
 
-MemAllocInfo RenderDevice::MemoryManager::allocate(ScopeStack& scope, VkDeviceSize size, VkDeviceSize alignment, uint32_t typeIndex)
+MemAllocInfo& RenderDevice::MemoryManager::allocate(ScopeStack& scope, VkDeviceSize size, VkDeviceSize alignment, uint32_t typeIndex)
 {
 	MemoryBlock& memBlock = findBlock(scope, size, alignment, typeIndex);
 	print("GPU allocate size = %ld, alighment = %ld, typeIndex = %d\n", size, alignment, typeIndex);
-	return memBlock.allocate(size, alignment);
+	return memBlock.allocate(scope, size, alignment);
 }
 
 MemoryBlock& RenderDevice::MemoryManager::findBlock(ScopeStack& scope, VkDeviceSize size, VkDeviceSize alignment, uint32_t typeIndex)
@@ -1510,7 +1510,8 @@ MemoryBlock::MemoryBlock(VkDevice vkDevice, VkDeviceSize size, uint32_t typeInde
 
 MemoryBlock::~MemoryBlock()
 {
-	vkFreeMemory(m_vkDevice, m_memory, nullptr);
+	if (m_vkDevice && m_memory)
+		vkFreeMemory(m_vkDevice, m_memory, nullptr);
 }
 
 static VkDeviceSize alignedSize(VkDeviceSize size, VkDeviceSize align = 16)
@@ -1518,13 +1519,13 @@ static VkDeviceSize alignedSize(VkDeviceSize size, VkDeviceSize align = 16)
 	return (size + (align - 1)) & ~(align - 1);
 }
 
-MemAllocInfo MemoryBlock::allocate(VkDeviceSize size, VkDeviceSize alignment)
+MemAllocInfo& MemoryBlock::allocate(ScopeStack& scope, VkDeviceSize size, VkDeviceSize alignment)
 {
 	VkDeviceSize offset = m_offset;
 	m_offset += alignedSize(size, alignment);	// +(size + (alignment - 1)) & ~(alignment - 1);
-	MemAllocInfo info = {m_memory, offset };
+	MemAllocInfo *info = scope.newObject<MemAllocInfo>(*this, offset);
 
-	return info;
+	return *info;
 }
 
 Buffer::Buffer(ScopeStack& scope, RenderDevice& renderDevice, VkDeviceSize size, VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags)
@@ -1563,7 +1564,7 @@ Buffer::~Buffer()
 
 void Buffer::bindMemory()
 {
-	VkResult res = vkBindBufferMemory(m_renderDevice.m_vkDevice, m_buffer, m_memAllocInfo.memoryBlock, m_memAllocInfo.offset);
+	VkResult res = vkBindBufferMemory(m_renderDevice.m_vkDevice, m_buffer, m_memAllocInfo.get().memoryBlock.m_memory, m_memAllocInfo.get().offset);
 	AssertMsg(res == VK_SUCCESS, "vkBindBuffer failed (res = %d).", static_cast<int32_t>(res));
 }
 
@@ -1572,7 +1573,7 @@ void *Buffer::mapMemory(VkDeviceSize offset, VkDeviceSize size)
 	AssertMsg((size == VK_WHOLE_SIZE || size <= m_allocatedSize), "Error: requested size too large.\n");
 	AssertMsg((m_memoryPropertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT), "Error: VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT not set.\n");
 	void *data = nullptr;
-	VkResult res = vkMapMemory(m_renderDevice.m_vkDevice, m_memAllocInfo.memoryBlock, offset, size, 0, &data);
+	VkResult res = vkMapMemory(m_renderDevice.m_vkDevice, m_memAllocInfo.get().memoryBlock.m_memory, offset, size, 0, &data);
 	AssertMsg(res == VK_SUCCESS, "vkMapMemory failed (res = %d).", static_cast<int32_t>(res));
 	return data;
 }
@@ -1580,14 +1581,14 @@ void *Buffer::mapMemory(VkDeviceSize offset, VkDeviceSize size)
 void Buffer::unmapMemory()
 {
 	AssertMsg((m_memoryPropertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) != 0, "Error: VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT not set.\n");
-	vkUnmapMemory(m_renderDevice.m_vkDevice, m_memAllocInfo.memoryBlock);
+	vkUnmapMemory(m_renderDevice.m_vkDevice, m_memAllocInfo.get().memoryBlock.m_memory);
 }
 
 
 StagingBuffer::StagingBuffer(RenderDevice& renderDevice, VkDeviceSize size, VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags)
 	: m_renderDevice(renderDevice)
 	, m_buffer(nullptr)
-	, m_memAllocInfo{ nullptr, 0 }
+	, m_memory(nullptr)
 	, m_allocatedSize(0)
 	, m_usageFlags(usageFlags)
 	, m_memoryPropertyFlags(memoryPropertyFlags)
@@ -1614,19 +1615,19 @@ StagingBuffer::StagingBuffer(RenderDevice& renderDevice, VkDeviceSize size, VkBu
 	m_allocatedSize = memReqs.size;
 
 	uint32_t memoryTypeIndex = renderDevice.getMemoryType(memReqs.memoryTypeBits, memoryPropertyFlags);	// , memAlloc.memoryTypeIndex);
-	m_memAllocInfo = renderDevice.allocateGpuMemory(memReqs.size, memReqs.alignment, memoryTypeIndex);
+	m_memory = renderDevice.allocateGpuMemory(memReqs.size, memReqs.alignment, memoryTypeIndex);
 }
 
 StagingBuffer::~StagingBuffer()
 {
 	// Vulkan resources destroyed in base.
 	vkDestroyBuffer(m_renderDevice.m_vkDevice, m_buffer, nullptr);
-	vkFreeMemory(m_renderDevice.m_vkDevice, m_memAllocInfo.memoryBlock, nullptr);
+	vkFreeMemory(m_renderDevice.m_vkDevice, m_memory, nullptr);
 }
 
 void StagingBuffer::bindMemory()
 {
-	VkResult res = vkBindBufferMemory(m_renderDevice.m_vkDevice, m_buffer, m_memAllocInfo.memoryBlock, m_memAllocInfo.offset);
+	VkResult res = vkBindBufferMemory(m_renderDevice.m_vkDevice, m_buffer, m_memory, 0);
 	AssertMsg(res == VK_SUCCESS, "vkBindBuffer failed (res = %d).", static_cast<int32_t>(res));
 }
 
@@ -1635,7 +1636,7 @@ void *StagingBuffer::mapMemory(VkDeviceSize offset, VkDeviceSize size)
 	AssertMsg((size == VK_WHOLE_SIZE || size <= m_allocatedSize), "Error: requested size too large.\n");
 	AssertMsg((m_memoryPropertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT), "Error: VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT not set.\n");
 	void *data = nullptr;
-	VkResult res = vkMapMemory(m_renderDevice.m_vkDevice, m_memAllocInfo.memoryBlock, offset, size, 0, &data);
+	VkResult res = vkMapMemory(m_renderDevice.m_vkDevice, m_memory, 0, size, 0, &data);
 	AssertMsg(res == VK_SUCCESS, "vkMapMemory failed (res = %d).", static_cast<int32_t>(res));
 	return data;
 }
@@ -1643,5 +1644,5 @@ void *StagingBuffer::mapMemory(VkDeviceSize offset, VkDeviceSize size)
 void StagingBuffer::unmapMemory()
 {
 	AssertMsg((m_memoryPropertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) != 0, "Error: VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT not set.\n");
-	vkUnmapMemory(m_renderDevice.m_vkDevice, m_memAllocInfo.memoryBlock);
+	vkUnmapMemory(m_renderDevice.m_vkDevice, m_memory);
 }
