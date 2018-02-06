@@ -196,15 +196,3 @@ public:
 	VkMemoryPropertyFlags	m_memoryPropertyFlags;
 };
 
-struct Texture
-{
-	Texture(ScopeStack& scope, RenderDevice& renderDevice, const char *filename);
-	~Texture();
-
-	RenderDevice&	m_renderDevice;
-	VkImage			m_vkImage;
-	VkImageView		m_vkImageView;
-	VkSampler		m_vkSampler;
-	MemAllocInfo	m_memAllocInfo;
-};
-
