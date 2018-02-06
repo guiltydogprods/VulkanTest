@@ -113,7 +113,7 @@ Texture::Texture(ScopeStack& scope, RenderDevice& renderDevice, const char *file
 	vkGetImageMemoryRequirements(renderDevice.m_vkDevice, m_vkImage, &memRequirements);
 
 	uint32_t memoryTypeIndex = renderDevice.getMemoryType(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);	// , dstAllocInfo.memoryTypeIndex);
-	m_memAllocInfo = RenderDevice::MemoryManager::Instance().allocate(scope, memRequirements.size, memRequirements.alignment, memoryTypeIndex);
+	m_memAllocInfo = RenderDevice::GPUMemoryManager::Instance().allocate(scope, memRequirements.size, memRequirements.alignment, memoryTypeIndex);
 	//	m_textureMemAllocInfo[texIndex] = allocateGpuMemory(memRequirements.size, memRequirements.alignment, memoryTypeIndex);
 	if (vkBindImageMemory(renderDevice.m_vkDevice, m_vkImage, m_memAllocInfo.get().memoryBlock.m_memory, m_memAllocInfo.get().offset) != VK_SUCCESS)
 	{

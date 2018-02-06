@@ -2,20 +2,20 @@
 
 struct Buffer;
 struct Mesh;
-struct MemAllocInfo;
-struct MemoryBlock;
+struct GPUMemAllocInfo;
+struct GPUMemoryBlock;
 struct MemorySubBlock;
 struct Texture;
 
 const uint32_t kMaxBlocks = 16;
 
-struct MemoryBlock
+struct GPUMemoryBlock
 {
-	MemoryBlock(VkDevice device, VkDeviceSize size, uint32_t typeIndex);
-	MemoryBlock() {};
-	~MemoryBlock();
+	GPUMemoryBlock(VkDevice device, VkDeviceSize size, uint32_t typeIndex);
+	GPUMemoryBlock() {};
+	~GPUMemoryBlock();
 
-	MemAllocInfo& allocate(ScopeStack& scope, VkDeviceSize size, VkDeviceSize alignment);
+	GPUMemAllocInfo& allocate(ScopeStack& scope, VkDeviceSize size, VkDeviceSize alignment);
 
 	VkDevice m_vkDevice;
 	VkDeviceMemory m_memory;
@@ -25,41 +25,41 @@ struct MemoryBlock
 	uint32_t m_pad[3];
 };
 
-struct MemAllocInfo
+struct GPUMemAllocInfo
 {
-	MemAllocInfo(MemoryBlock& _memoryBlock, VkDeviceSize _offset)
+	GPUMemAllocInfo(GPUMemoryBlock& _memoryBlock, VkDeviceSize _offset)
 		: memoryBlock(_memoryBlock), offset(_offset) {}
 
-	~MemAllocInfo() { memoryBlock.m_offset = offset; }
+	~GPUMemAllocInfo() { memoryBlock.m_offset = offset; }
 
-	MemoryBlock& memoryBlock;
+	GPUMemoryBlock& memoryBlock;
 	VkDeviceSize offset;
 };
 
-static MemoryBlock _dummyMemoryBlock = {};
-static MemAllocInfo _dummyMemAllocInfo = { _dummyMemoryBlock, 0 };
+static GPUMemoryBlock _dummyMemoryBlock = {};
+static GPUMemAllocInfo _dummyMemAllocInfo = { _dummyMemoryBlock, 0 };
 
 struct RenderDevice
 {
 	RenderDevice(ScopeStack& scopeStack);
 	~RenderDevice();
 
-	struct MemoryManager
+	struct GPUMemoryManager
 	{
 		friend struct RenderDevice;
 	public:
-		static MemoryManager& Instance();
-		MemAllocInfo& allocate(ScopeStack& scope, VkDeviceSize size, VkDeviceSize alignment, uint32_t typeIndex);
-		MemoryBlock& findBlock(ScopeStack& scope, VkDeviceSize size, VkDeviceSize alignment, uint32_t typeIndex);
+		static GPUMemoryManager& Instance();
+		GPUMemAllocInfo& allocate(ScopeStack& scope, VkDeviceSize size, VkDeviceSize alignment, uint32_t typeIndex);
+		GPUMemoryBlock& findBlock(ScopeStack& scope, VkDeviceSize size, VkDeviceSize alignment, uint32_t typeIndex);
 
 
 		RenderDevice *m_pRenderDevice;
-		MemoryBlock *m_blocks[kMaxBlocks];
+		GPUMemoryBlock *m_blocks[kMaxBlocks];
 		uint32_t m_numBlocks;
 	private:
 		inline void setRenderDevice(RenderDevice *pRenderDevice) { m_pRenderDevice = pRenderDevice; }
 
-		MemoryManager();
+		GPUMemoryManager();
 	};
 
 	void initialize(ScopeStack& scope, GLFWwindow *window);
@@ -153,7 +153,7 @@ struct RenderDevice
 	VkImage								m_vkDepthBufferImage;
 	VkImageView							m_vkDepthBufferView;
 //	MemAllocInfo&						m_depthBufferMemAllocInfo;
-	std::reference_wrapper<MemAllocInfo> m_depthBufferMemAllocInfo;
+	std::reference_wrapper<GPUMemAllocInfo> m_depthBufferMemAllocInfo;
 
 //	VkDeviceMemory						m_depthBufferMemory;
 
@@ -185,7 +185,7 @@ protected:
 public:
 	RenderDevice&						 m_renderDevice;
 	VkBuffer							 m_buffer;
-	std::reference_wrapper<MemAllocInfo> m_memAllocInfo;
+	std::reference_wrapper<GPUMemAllocInfo> m_memAllocInfo;
 	VkDeviceSize						 m_allocatedSize;
 	VkBufferUsageFlags					 m_usageFlags;
 	VkMemoryPropertyFlags				 m_memoryPropertyFlags;

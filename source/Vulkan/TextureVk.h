@@ -1,7 +1,7 @@
 #pragma once
 #include "RenderDeviceVk.h"
 
-struct MemAllocInfo;
+struct GPUMemAllocInfo;
 
 typedef unsigned char BYTE;
 typedef unsigned short WORD;
@@ -59,6 +59,6 @@ struct Texture
 	VkImage			m_vkImage;
 	VkImageView		m_vkImageView;
 	VkSampler		m_vkSampler;
-	std::reference_wrapper<MemAllocInfo> m_memAllocInfo;
+	std::reference_wrapper<GPUMemAllocInfo> m_memAllocInfo;
 };
 

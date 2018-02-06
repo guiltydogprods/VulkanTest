@@ -74,7 +74,7 @@ RenderDevice::RenderDevice(ScopeStack& scope)
 	, m_meshes(nullptr)
 	, m_numMeshes(0)
 {
-	MemoryManager::Instance().setRenderDevice(this);
+	GPUMemoryManager::Instance().setRenderDevice(this);
 
 	Application* app = Application::GetApplication();
 
@@ -551,7 +551,7 @@ void RenderDevice::createDepthBuffer(ScopeStack& scope)
 	VkMemoryRequirements memRequirements;
 	vkGetImageMemoryRequirements(m_vkDevice, m_vkDepthBufferImage, &memRequirements);
 	uint32_t memoryTypeIndex = getMemoryType(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-	m_depthBufferMemAllocInfo = MemoryManager::Instance().allocate(scope, memRequirements.size, memRequirements.alignment, memoryTypeIndex);
+	m_depthBufferMemAllocInfo = GPUMemoryManager::Instance().allocate(scope, memRequirements.size, memRequirements.alignment, memoryTypeIndex);
 //	m_depthBufferMemAllocInfo = allocateGpuMemory(memRequirements.size, memRequirements.alignment, memoryTypeIndex);
 	if (vkBindImageMemory(m_vkDevice, m_vkDepthBufferImage, m_depthBufferMemAllocInfo.get().memoryBlock.m_memory, m_depthBufferMemAllocInfo.get().offset) != VK_SUCCESS)
 	{
@@ -1455,7 +1455,7 @@ void RenderDevice::copyImage(VkCommandBuffer commandBuffer, VkImage srcImage, Vk
 	vkCmdCopyImage(commandBuffer, srcImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 }
 
-RenderDevice::MemoryManager::MemoryManager()
+RenderDevice::GPUMemoryManager::GPUMemoryManager()
 	: m_pRenderDevice(nullptr)
 	, m_numBlocks(0)
 {
@@ -1463,20 +1463,20 @@ RenderDevice::MemoryManager::MemoryManager()
 		m_blocks[i] = nullptr;
 }
 
-RenderDevice::MemoryManager& RenderDevice::MemoryManager::Instance()
+RenderDevice::GPUMemoryManager& RenderDevice::GPUMemoryManager::Instance()
 {
-	static MemoryManager ms_instance;
+	static GPUMemoryManager ms_instance;
 	return ms_instance;
 }
 
-MemAllocInfo& RenderDevice::MemoryManager::allocate(ScopeStack& scope, VkDeviceSize size, VkDeviceSize alignment, uint32_t typeIndex)
+GPUMemAllocInfo& RenderDevice::GPUMemoryManager::allocate(ScopeStack& scope, VkDeviceSize size, VkDeviceSize alignment, uint32_t typeIndex)
 {
-	MemoryBlock& memBlock = findBlock(scope, size, alignment, typeIndex);
+	GPUMemoryBlock& memBlock = findBlock(scope, size, alignment, typeIndex);
 	print("GPU allocate size = %ld, alighment = %ld, typeIndex = %d\n", size, alignment, typeIndex);
 	return memBlock.allocate(scope, size, alignment);
 }
 
-MemoryBlock& RenderDevice::MemoryManager::findBlock(ScopeStack& scope, VkDeviceSize size, VkDeviceSize alignment, uint32_t typeIndex)
+GPUMemoryBlock& RenderDevice::GPUMemoryManager::findBlock(ScopeStack& scope, VkDeviceSize size, VkDeviceSize alignment, uint32_t typeIndex)
 {
 	for (uint32_t i = 0; i < m_numBlocks; ++i)
 	{
@@ -1486,12 +1486,12 @@ MemoryBlock& RenderDevice::MemoryManager::findBlock(ScopeStack& scope, VkDeviceS
 		}
 	}
 	AssertMsg((m_pRenderDevice), "MemoryManager::m_pRenderDevice has not been set.\n");
-	MemoryBlock *newBlock = m_blocks[m_numBlocks++] = static_cast<MemoryBlock *>(scope.newObject<MemoryBlock>(m_pRenderDevice->m_vkDevice, 256 * 1024 * 1024, typeIndex));
+	GPUMemoryBlock *newBlock = m_blocks[m_numBlocks++] = static_cast<GPUMemoryBlock *>(scope.newObject<GPUMemoryBlock>(m_pRenderDevice->m_vkDevice, 256 * 1024 * 1024, typeIndex));
 
 	return *newBlock;
 }
 
-MemoryBlock::MemoryBlock(VkDevice vkDevice, VkDeviceSize size, uint32_t typeIndex)
+GPUMemoryBlock::GPUMemoryBlock(VkDevice vkDevice, VkDeviceSize size, uint32_t typeIndex)
 	: m_vkDevice(vkDevice)
 	, m_memory(nullptr)
 	, m_size(0)
@@ -1508,7 +1508,7 @@ MemoryBlock::MemoryBlock(VkDevice vkDevice, VkDeviceSize size, uint32_t typeInde
 		m_size = size;
 }
 
-MemoryBlock::~MemoryBlock()
+GPUMemoryBlock::~GPUMemoryBlock()
 {
 	if (m_vkDevice && m_memory)
 		vkFreeMemory(m_vkDevice, m_memory, nullptr);
@@ -1519,11 +1519,11 @@ static VkDeviceSize alignedSize(VkDeviceSize size, VkDeviceSize align = 16)
 	return (size + (align - 1)) & ~(align - 1);
 }
 
-MemAllocInfo& MemoryBlock::allocate(ScopeStack& scope, VkDeviceSize size, VkDeviceSize alignment)
+GPUMemAllocInfo& GPUMemoryBlock::allocate(ScopeStack& scope, VkDeviceSize size, VkDeviceSize alignment)
 {
 	VkDeviceSize offset = m_offset;
 	m_offset += alignedSize(size, alignment);	// +(size + (alignment - 1)) & ~(alignment - 1);
-	MemAllocInfo *info = scope.newObject<MemAllocInfo>(*this, offset);
+	GPUMemAllocInfo *info = scope.newObject<GPUMemAllocInfo>(*this, offset);
 
 	return *info;
 }
@@ -1552,7 +1552,7 @@ Buffer::Buffer(ScopeStack& scope, RenderDevice& renderDevice, VkDeviceSize size,
 
 	uint32_t memoryTypeIndex = renderDevice.getMemoryType(memReqs.memoryTypeBits, memoryPropertyFlags);	// , memAlloc.memoryTypeIndex);
 //	m_memAllocInfo = renderDevice.allocateGpuMemory(memReqs.size, memReqs.alignment, memoryTypeIndex);
-	m_memAllocInfo = RenderDevice::MemoryManager::Instance().allocate(scope, memReqs.size, memReqs.alignment, memoryTypeIndex);
+	m_memAllocInfo = RenderDevice::GPUMemoryManager::Instance().allocate(scope, memReqs.size, memReqs.alignment, memoryTypeIndex);
 
 }
 
