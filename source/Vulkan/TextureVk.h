@@ -47,9 +47,6 @@ struct DDS_HEADER
 #define FOURCC_DXT3	MAKEFOURCC('D', 'X', 'T', '3')
 #define FOURCC_DXT5	MAKEFOURCC('D', 'X', 'T', '5')
 
-//static MemoryBlock _dummyMemoryBlock = {nullptr, 0, 0};
-//static MemAllocInfo _dummyMemAllocInfo = { _dummyMemoryBlock, 0 };
-
 struct Texture
 {
 	Texture(ScopeStack& scope, RenderDevice& renderDevice, const char *filename);
