@@ -552,7 +552,6 @@ void RenderDevice::createDepthBuffer(ScopeStack& scope)
 	vkGetImageMemoryRequirements(m_vkDevice, m_vkDepthBufferImage, &memRequirements);
 	uint32_t memoryTypeIndex = getMemoryType(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 	m_depthBufferMemAllocInfo = GPUMemoryManager::Instance().allocate(scope, memRequirements.size, memRequirements.alignment, memoryTypeIndex);
-//	m_depthBufferMemAllocInfo = allocateGpuMemory(memRequirements.size, memRequirements.alignment, memoryTypeIndex);
 	if (vkBindImageMemory(m_vkDevice, m_vkDepthBufferImage, m_depthBufferMemAllocInfo.get().memoryBlock.m_memory, m_depthBufferMemAllocInfo.get().offset) != VK_SUCCESS)
 	{
 		print("failed to bind memory to image\n");
@@ -1551,7 +1550,6 @@ Buffer::Buffer(ScopeStack& scope, RenderDevice& renderDevice, VkDeviceSize size,
 	m_allocatedSize = memReqs.size;
 
 	uint32_t memoryTypeIndex = renderDevice.getMemoryType(memReqs.memoryTypeBits, memoryPropertyFlags);	// , memAlloc.memoryTypeIndex);
-//	m_memAllocInfo = renderDevice.allocateGpuMemory(memReqs.size, memReqs.alignment, memoryTypeIndex);
 	m_memAllocInfo = RenderDevice::GPUMemoryManager::Instance().allocate(scope, memReqs.size, memReqs.alignment, memoryTypeIndex);
 
 }
@@ -1559,7 +1557,6 @@ Buffer::Buffer(ScopeStack& scope, RenderDevice& renderDevice, VkDeviceSize size,
 Buffer::~Buffer()
 {
 	vkDestroyBuffer(m_renderDevice.m_vkDevice, m_buffer, nullptr);
-//	vkFreeMemory(m_renderDevice.m_vkDevice, m_memAllocInfo.memoryBlock, nullptr);
 }
 
 void Buffer::bindMemory()
@@ -1620,7 +1617,6 @@ StagingBuffer::StagingBuffer(RenderDevice& renderDevice, VkDeviceSize size, VkBu
 
 StagingBuffer::~StagingBuffer()
 {
-	// Vulkan resources destroyed in base.
 	vkDestroyBuffer(m_renderDevice.m_vkDevice, m_buffer, nullptr);
 	vkFreeMemory(m_renderDevice.m_vkDevice, m_memory, nullptr);
 }

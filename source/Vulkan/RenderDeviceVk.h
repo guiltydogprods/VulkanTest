@@ -203,7 +203,6 @@ public:
 
 	RenderDevice&			m_renderDevice;
 	VkBuffer				m_buffer;
-//	MemAllocInfo			m_memAllocInfo;
 	VkDeviceMemory			m_memory;
 	VkDeviceSize			m_allocatedSize;
 	VkBufferUsageFlags		m_usageFlags;
