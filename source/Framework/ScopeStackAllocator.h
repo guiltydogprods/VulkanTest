@@ -77,6 +77,8 @@ public:
 		{
 #ifdef MEM_DEBUG
 			print("Deleting: %s (0x%016x)\n", f->typeName, objectFromFinalizer(f));
+#else
+			print("Deleting object @ 0x%016x\n", objectFromFinalizer(f));
 #endif
 			(*f->fn)(objectFromFinalizer(f));
 		}
@@ -90,16 +92,16 @@ public:
 		Finalizer* f = allocWithFinalizer(sizeof(T));
 		// Link this finalizer onto the chain.
 		f->fn = &destructorCall<T>;
+		const char *typeName = typeid(T).name();
 #ifdef MEM_DEBUG
-		f->typeName = typeid(T).name();
+		f->typeName = typeName;
 #endif
 		f->chain = m_finalizerChain;
 		m_finalizerChain = f;
 
 		void *allocAddress = objectFromFinalizer(f);
-#ifdef MEM_DEBUG
-		print("Allocating: %s (0x%016x, %ld bytes) -> Finalizer (0x%016x, %ld bytes)\n", f->typeName, allocAddress, sizeof(T), f, sizeof(Finalizer));
-#endif
+		print("Allocating: %s (0x%016x, %ld bytes) -> Finalizer (0x%016x, %ld bytes)\n", typeName, allocAddress, sizeof(T), f, sizeof(Finalizer));
+
 		T* result = new (allocAddress) T(std::forward<Args>(params)...);
 
 		return result;
