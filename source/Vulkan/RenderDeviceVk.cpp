@@ -75,7 +75,6 @@ RenderDevice::RenderDevice(ScopeStack& scope, uint32_t maxWidth, uint32_t maxHei
 	, m_maxWidth(maxWidth)
 	, m_maxHeight(maxHeight)
 {
-//	GPUMemoryManager::Instance().setRenderDevice(this);
 	GPUMemoryManager::Instance(this);
 	Application* app = Application::GetApplication();
 
@@ -1464,6 +1463,7 @@ RenderDevice::GPUMemoryManager::GPUMemoryManager(RenderDevice& renderDevice)
 RenderDevice::GPUMemoryManager& RenderDevice::GPUMemoryManager::Instance(RenderDevice *renderDevice)
 {
 	static GPUMemoryManager ms_instance(*renderDevice);
+	AssertMsg((&ms_instance.m_renderDevice != nullptr), "Attempted to initiallized GPUMemoryManager without an RenderDevice.\n");
 	return ms_instance;
 }
 
