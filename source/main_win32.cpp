@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
 	}
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
-	GLFWwindow* window = glfwCreateWindow(app->getScreenWidth(), app->getScreenHeight(), app->getApplicationName(), nullptr, nullptr);
+	GLFWwindow* window = glfwCreateWindow(app->getScreenWidth(), app->getScreenHeight(), app->getApplicationName(), nullptr /*glfwGetPrimaryMonitor()*/, nullptr);
 
 	uint8_t *memoryBlock = static_cast<uint8_t *>(_aligned_malloc(kMemMgrSize, kMemMgrAlign));
 	LinearAllocator allocator(memoryBlock, kMemMgrSize);

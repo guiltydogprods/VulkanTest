@@ -7,33 +7,35 @@ struct GPUMemoryBlock;
 struct MemorySubBlock;
 struct Texture;
 
-const uint32_t kMaxBlocks = 16;
+const uint32_t kMaxGPUMemoryBlocks = 16;
+const uint32_t kGPUMemoryBlockSize = 256 * 1024 * 1024;
 
 struct GPUMemoryBlock
 {
-	GPUMemoryBlock(VkDevice device, VkDeviceSize size, uint32_t typeIndex);
+	GPUMemoryBlock(VkDevice device, uint32_t size, uint32_t typeIndex);
 	GPUMemoryBlock() {};
 	~GPUMemoryBlock();
 
-	GPUMemAllocInfo& allocate(ScopeStack& scope, VkDeviceSize size, VkDeviceSize alignment);
+	GPUMemAllocInfo& allocate(ScopeStack& scope, uint32_t size, uint32_t alignment);
 
 	VkDevice m_vkDevice;
 	VkDeviceMemory m_memory;
-	VkDeviceSize m_size;
-	VkDeviceSize m_offset;
+	uint32_t m_size;
+	uint32_t m_offset;
 	uint32_t m_typeIndex;
-	uint32_t m_pad[3];
+	uint32_t m_pad;
 };
 
 struct GPUMemAllocInfo
 {
-	GPUMemAllocInfo(GPUMemoryBlock& _memoryBlock, VkDeviceSize _offset)
+	GPUMemAllocInfo(GPUMemoryBlock& _memoryBlock, uint32_t _offset)
 		: memoryBlock(_memoryBlock), offset(_offset) {}
 
 	~GPUMemAllocInfo() { memoryBlock.m_offset = offset; }
 
 	GPUMemoryBlock& memoryBlock;
-	VkDeviceSize offset;
+	uint32_t size;
+	uint32_t offset;
 };
 
 static GPUMemoryBlock _dummyMemoryBlock = {};
@@ -54,7 +56,7 @@ struct RenderDevice
 
 
 		RenderDevice *m_pRenderDevice;
-		GPUMemoryBlock *m_blocks[kMaxBlocks];
+		GPUMemoryBlock *m_blocks[kMaxGPUMemoryBlocks];
 		uint32_t m_numBlocks;
 	private:
 		inline void setRenderDevice(RenderDevice *pRenderDevice) { m_pRenderDevice = pRenderDevice; }

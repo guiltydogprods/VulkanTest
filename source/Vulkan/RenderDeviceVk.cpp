@@ -1458,7 +1458,7 @@ RenderDevice::GPUMemoryManager::GPUMemoryManager()
 	: m_pRenderDevice(nullptr)
 	, m_numBlocks(0)
 {
-	for (uint32_t i = 0; i < kMaxBlocks; ++i)
+	for (uint32_t i = 0; i < kMaxGPUMemoryBlocks; ++i)
 		m_blocks[i] = nullptr;
 }
 
@@ -1470,27 +1470,31 @@ RenderDevice::GPUMemoryManager& RenderDevice::GPUMemoryManager::Instance()
 
 GPUMemAllocInfo& RenderDevice::GPUMemoryManager::allocate(ScopeStack& scope, VkDeviceSize size, VkDeviceSize alignment, uint32_t typeIndex)
 {
-	GPUMemoryBlock& memBlock = findBlock(scope, size, alignment, typeIndex);
+	AssertMsg((size < kGPUMemoryBlockSize), "Error: Requested allocation larger than kGPUMemoryBlockSize.\n");
+	uint32_t size32 = static_cast<uint32_t>(size);
+	uint32_t alignment32 = static_cast<uint32_t>(alignment);
+	GPUMemoryBlock& memBlock = findBlock(scope, size32, alignment32, typeIndex);
 	print("GPU allocate size = %ld, alighment = %ld, typeIndex = %d\n", size, alignment, typeIndex);
-	return memBlock.allocate(scope, size, alignment);
+	return memBlock.allocate(scope, size32, alignment32);
 }
 
 GPUMemoryBlock& RenderDevice::GPUMemoryManager::findBlock(ScopeStack& scope, VkDeviceSize size, VkDeviceSize alignment, uint32_t typeIndex)
 {
 	for (uint32_t i = 0; i < m_numBlocks; ++i)
 	{
-		if (m_blocks[i] != nullptr && m_blocks[i]->m_typeIndex == typeIndex)
+		if (m_blocks[i] != nullptr && m_blocks[i]->m_typeIndex == typeIndex) //CLR - Need to check alignment too.
 		{
-			return *m_blocks[i];
+			if ((m_blocks[i]->m_size - m_blocks[i]->m_offset) >= size)
+				return *m_blocks[i];
 		}
 	}
 	AssertMsg((m_pRenderDevice), "MemoryManager::m_pRenderDevice has not been set.\n");
-	GPUMemoryBlock *newBlock = m_blocks[m_numBlocks++] = static_cast<GPUMemoryBlock *>(scope.newObject<GPUMemoryBlock>(m_pRenderDevice->m_vkDevice, 256 * 1024 * 1024, typeIndex));
+	GPUMemoryBlock *newBlock = m_blocks[m_numBlocks++] = static_cast<GPUMemoryBlock *>(scope.newObject<GPUMemoryBlock>(m_pRenderDevice->m_vkDevice, kGPUMemoryBlockSize, typeIndex));
 
 	return *newBlock;
 }
 
-GPUMemoryBlock::GPUMemoryBlock(VkDevice vkDevice, VkDeviceSize size, uint32_t typeIndex)
+GPUMemoryBlock::GPUMemoryBlock(VkDevice vkDevice, uint32_t size, uint32_t typeIndex)
 	: m_vkDevice(vkDevice)
 	, m_memory(nullptr)
 	, m_size(0)
@@ -1513,14 +1517,14 @@ GPUMemoryBlock::~GPUMemoryBlock()
 		vkFreeMemory(m_vkDevice, m_memory, nullptr);
 }
 
-static VkDeviceSize alignedSize(VkDeviceSize size, VkDeviceSize align = 16)
+static uint32_t alignedSize(uint32_t size, uint32_t align = 16)
 {
 	return (size + (align - 1)) & ~(align - 1);
 }
 
-GPUMemAllocInfo& GPUMemoryBlock::allocate(ScopeStack& scope, VkDeviceSize size, VkDeviceSize alignment)
+GPUMemAllocInfo& GPUMemoryBlock::allocate(ScopeStack& scope, uint32_t size, uint32_t alignment)
 {
-	VkDeviceSize offset = m_offset;
+	uint32_t offset = m_offset;
 	m_offset += alignedSize(size, alignment);	// +(size + (alignment - 1)) & ~(alignment - 1);
 	GPUMemAllocInfo *info = scope.newObject<GPUMemAllocInfo>(*this, offset);
 
