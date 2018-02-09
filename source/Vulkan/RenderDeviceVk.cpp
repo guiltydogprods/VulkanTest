@@ -75,7 +75,7 @@ RenderDevice::RenderDevice(ScopeStack& scope, uint32_t maxWidth, uint32_t maxHei
 	, m_maxWidth(maxWidth)
 	, m_maxHeight(maxHeight)
 {
-	GPUMemoryManager::Instance(this);
+	GPUMemoryManager::Instance(nullptr);
 	Application* app = Application::GetApplication();
 
 	initialize(scope, window);
@@ -1463,17 +1463,17 @@ RenderDevice::GPUMemoryManager::GPUMemoryManager(RenderDevice& renderDevice)
 RenderDevice::GPUMemoryManager& RenderDevice::GPUMemoryManager::Instance(RenderDevice *renderDevice)
 {
 	static GPUMemoryManager ms_instance(*renderDevice);
-	AssertMsg((&ms_instance.m_renderDevice != nullptr), "Attempted to initiallized GPUMemoryManager without an RenderDevice.\n");
+	FatalAssertMsg((&ms_instance.m_renderDevice != nullptr), "Attempted to initialize GPUMemoryManager without a RenderDevice.\n");
 	return ms_instance;
 }
 
 GPUMemAllocInfo& RenderDevice::GPUMemoryManager::allocate(ScopeStack& scope, VkDeviceSize size, VkDeviceSize alignment, uint32_t typeIndex)
 {
-	AssertMsg((size < kGPUMemoryBlockSize), "Error: Requested allocation larger than kGPUMemoryBlockSize.\n");
+	AssertMsg((size < kGPUMemoryBlockSize), "Requested allocation larger than kGPUMemoryBlockSize.\n");
 	uint32_t size32 = static_cast<uint32_t>(size);
 	uint32_t alignment32 = static_cast<uint32_t>(alignment);
 	GPUMemoryBlock& memBlock = findBlock(scope, size32, alignment32, typeIndex);
-	print("GPU allocate size = %ld, alighment = %ld, typeIndex = %d\n", size, alignment, typeIndex);
+	print("GPU allocate size = %ld, alignment = %ld, typeIndex = %d\n", size, alignment, typeIndex);
 	return memBlock.allocate(scope, size32, alignment32);
 }
 

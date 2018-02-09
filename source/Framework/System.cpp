@@ -2,7 +2,7 @@
 
 #pragma once
 
-void AssertMsgFunc(const char *func, const char *file, int line, const char *fmt, ...)
+void AssertMsgFunc(bool fatal, const char *func, const char *file, int line, const char *fmt, ...)
 {
 	char debugString[16384];
 
@@ -11,10 +11,18 @@ void AssertMsgFunc(const char *func, const char *file, int line, const char *fmt
 	vsprintf_s(debugString, sizeof(debugString), fmt, args);
 	va_end(args);
 
-	print("Assert: %s\n  function %s, file %s, line %d.\n", debugString, func, file, line);
+	if (fatal)
+	{
+		print("Fatal Error: %s\n  function %s, file %s, line %d.\n", debugString, func, file, line);
+		exit(1);
+	}
+	else
+	{
+		print("Assert: %s\n  function %s, file %s, line %d.\n", debugString, func, file, line);
 #if defined(WIN32)
-	DebugBreak();
+		DebugBreak();
 #endif
+	}
 }
 
 void print(const char *fmt, ...)

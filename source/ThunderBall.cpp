@@ -6,8 +6,8 @@
 ThunderBallApp s_thundeBallApp;
 
 const char		*kApplicationName = "Thunder Ball";
-const uint32_t	kScreenWidth = 1280;
-const uint32_t	kScreenHeight = 720;
+const uint32_t	kScreenWidth = 1920;
+const uint32_t	kScreenHeight = 1080;
 
 ThunderBallApp::ThunderBallApp()
 	: Application(kApplicationName, kScreenWidth, kScreenHeight)

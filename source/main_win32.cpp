@@ -37,14 +37,16 @@ int main(int argc, char *argv[])
 	uint8_t *memoryBlock = static_cast<uint8_t *>(_aligned_malloc(kMemMgrSize, kMemMgrAlign));
 	LinearAllocator allocator(memoryBlock, kMemMgrSize);
 	{
-		ScopeStack scopeStack(allocator, "Main");
+		ScopeStack systemScope(allocator, "System");
 
 		const GLFWvidmode *primaryScreenMode = glfwGetVideoMode(glfwGetPrimaryMonitor());
-		RenderDevice *pRenderDevice = scopeStack.newObject<RenderDevice>(scopeStack, static_cast<uint32_t>(primaryScreenMode->width), static_cast<uint32_t>(primaryScreenMode->height), window);
+		RenderDevice *pRenderDevice = systemScope.newObject<RenderDevice>(systemScope, static_cast<uint32_t>(primaryScreenMode->width), static_cast<uint32_t>(primaryScreenMode->height), window);
 #if defined(WIN32)
 		app->setGLFWwindow(window);
 #endif
-		app->initialize(scopeStack, *pRenderDevice);
+		ScopeStack initScope(systemScope, "AppInit");
+
+		app->initialize(initScope, *pRenderDevice);
 
 		app->resize(*pRenderDevice, app->getScreenWidth(), app->getScreenHeight());
 
@@ -57,7 +59,7 @@ int main(int argc, char *argv[])
 		{
 			char frameName[16];
 			sprintf_s(frameName, sizeof(frameName), "Frame %lld", frameNum++);
-			ScopeStack frameScope(scopeStack, frameName, false);
+			ScopeStack frameScope(initScope, frameName, false);
 			app->update(frameScope, *pRenderDevice);
 			app->render(frameScope, *pRenderDevice);
 
