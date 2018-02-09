@@ -50,18 +50,16 @@ struct RenderDevice
 	{
 		friend struct RenderDevice;
 	public:
-		static GPUMemoryManager& Instance();
+		static GPUMemoryManager& Instance(RenderDevice *renderDevice = nullptr);
 		GPUMemAllocInfo& allocate(ScopeStack& scope, VkDeviceSize size, VkDeviceSize alignment, uint32_t typeIndex);
 		GPUMemoryBlock& findBlock(ScopeStack& scope, VkDeviceSize size, VkDeviceSize alignment, uint32_t typeIndex);
 
 
-		RenderDevice *m_pRenderDevice;
+		RenderDevice& m_renderDevice;
 		GPUMemoryBlock *m_blocks[kMaxGPUMemoryBlocks];
 		uint32_t m_numBlocks;
 	private:
-		inline void setRenderDevice(RenderDevice *pRenderDevice) { m_pRenderDevice = pRenderDevice; }
-
-		GPUMemoryManager();
+		GPUMemoryManager(RenderDevice& renderDevice);
 	};
 
 	void initialize(ScopeStack& scope, GLFWwindow *window);
@@ -154,10 +152,7 @@ struct RenderDevice
 	VkFormat							m_vkDepthBufferFormat;
 	VkImage								m_vkDepthBufferImage;
 	VkImageView							m_vkDepthBufferView;
-//	MemAllocInfo&						m_depthBufferMemAllocInfo;
 	std::reference_wrapper<GPUMemAllocInfo> m_depthBufferMemAllocInfo;
-
-//	VkDeviceMemory						m_depthBufferMemory;
 
 	uint32_t							m_numTextures;
 	Texture								*m_textures[2];
@@ -213,4 +208,3 @@ public:
 	VkBufferUsageFlags		m_usageFlags;
 	VkMemoryPropertyFlags	m_memoryPropertyFlags;
 };
-

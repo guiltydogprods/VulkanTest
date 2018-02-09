@@ -75,8 +75,8 @@ RenderDevice::RenderDevice(ScopeStack& scope, uint32_t maxWidth, uint32_t maxHei
 	, m_maxWidth(maxWidth)
 	, m_maxHeight(maxHeight)
 {
-	GPUMemoryManager::Instance().setRenderDevice(this);
-
+//	GPUMemoryManager::Instance().setRenderDevice(this);
+	GPUMemoryManager::Instance(this);
 	Application* app = Application::GetApplication();
 
 	initialize(scope, window);
@@ -1453,17 +1453,17 @@ void RenderDevice::copyImage(VkCommandBuffer commandBuffer, VkImage srcImage, Vk
 	vkCmdCopyImage(commandBuffer, srcImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 }
 
-RenderDevice::GPUMemoryManager::GPUMemoryManager()
-	: m_pRenderDevice(nullptr)
+RenderDevice::GPUMemoryManager::GPUMemoryManager(RenderDevice& renderDevice)
+	: m_renderDevice(renderDevice)
 	, m_numBlocks(0)
 {
 	for (uint32_t i = 0; i < kMaxGPUMemoryBlocks; ++i)
 		m_blocks[i] = nullptr;
 }
 
-RenderDevice::GPUMemoryManager& RenderDevice::GPUMemoryManager::Instance()
+RenderDevice::GPUMemoryManager& RenderDevice::GPUMemoryManager::Instance(RenderDevice *renderDevice)
 {
-	static GPUMemoryManager ms_instance;
+	static GPUMemoryManager ms_instance(*renderDevice);
 	return ms_instance;
 }
 
@@ -1487,8 +1487,7 @@ GPUMemoryBlock& RenderDevice::GPUMemoryManager::findBlock(ScopeStack& scope, VkD
 				return *m_blocks[i];
 		}
 	}
-	AssertMsg((m_pRenderDevice), "MemoryManager::m_pRenderDevice has not been set.\n");
-	GPUMemoryBlock *newBlock = m_blocks[m_numBlocks++] = static_cast<GPUMemoryBlock *>(scope.newObject<GPUMemoryBlock>(m_pRenderDevice->m_vkDevice, kGPUMemoryBlockSize, typeIndex));
+	GPUMemoryBlock *newBlock = m_blocks[m_numBlocks++] = static_cast<GPUMemoryBlock *>(scope.newObject<GPUMemoryBlock>(m_renderDevice.m_vkDevice, kGPUMemoryBlockSize, typeIndex));
 
 	return *newBlock;
 }
