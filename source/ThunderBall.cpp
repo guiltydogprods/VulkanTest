@@ -6,8 +6,8 @@
 ThunderBallApp s_thundeBallApp;
 
 const char		*kApplicationName = "Thunder Ball";
-const uint32_t	kScreenWidth = 1920;
-const uint32_t	kScreenHeight = 1080;
+const uint32_t	kScreenWidth = 1280;
+const uint32_t	kScreenHeight = 720;
 
 ThunderBallApp::ThunderBallApp()
 	: Application(kApplicationName, kScreenWidth, kScreenHeight)
@@ -19,12 +19,8 @@ ThunderBallApp::~ThunderBallApp()
 	print("ThunderBallApp::dtor\n");
 }
 
-void ThunderBallApp::initialize(ScopeStack& scopeStack)
+void ThunderBallApp::initialize(ScopeStack& scopeStack, RenderDevice& renderDevice)
 {
-	m_scopeStack = &scopeStack;
-
-	m_pRenderDevice = scopeStack.newObject<RenderDevice>(scopeStack);
-
 	const char *meshes[] =
 	{
 		"Donut2.s3d",
@@ -35,12 +31,12 @@ void ThunderBallApp::initialize(ScopeStack& scopeStack)
 	uint32_t verticesSize = 100000;
 	uint32_t indicesSize = 100000;
 
-	m_pRenderDevice->createVertexFormat();
-	m_pRenderDevice->m_vertexBuffer = scopeStack.newObject<Buffer>(scopeStack, *m_pRenderDevice, verticesSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-	m_pRenderDevice->m_vertexBuffer->bindMemory();
+	renderDevice.createVertexFormat();
+	renderDevice.m_vertexBuffer = scopeStack.newObject<Buffer>(scopeStack, renderDevice, verticesSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	renderDevice.m_vertexBuffer->bindMemory();
 	int64_t vertexBufferOffset = 0;
-	m_pRenderDevice->m_indexBuffer = scopeStack.newObject<Buffer>(scopeStack, *m_pRenderDevice, indicesSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-	m_pRenderDevice->m_indexBuffer->bindMemory();
+	renderDevice.m_indexBuffer = scopeStack.newObject<Buffer>(scopeStack, renderDevice, indicesSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	renderDevice.m_indexBuffer->bindMemory();
 	int64_t indexBufferOffset = 0;
 
 	m_numMeshes = sizeof(meshes) / sizeof(const char *);
@@ -48,26 +44,26 @@ void ThunderBallApp::initialize(ScopeStack& scopeStack)
 
 	for (uint32_t i = 0; i < m_numMeshes; ++i)
 	{
-		m_meshes[i] = scopeStack.newObject<Mesh>(scopeStack, meshes[i], *m_pRenderDevice, vertexBufferOffset, indexBufferOffset);
+		m_meshes[i] = scopeStack.newObject<Mesh>(scopeStack, meshes[i], renderDevice, vertexBufferOffset, indexBufferOffset);
 	}
 
-	m_pRenderDevice->createUniformBuffer(scopeStack);
-	m_pRenderDevice->finalize(m_meshes, m_numMeshes);
+	renderDevice.createUniformBuffer(scopeStack);
+	renderDevice.finalize(m_meshes, m_numMeshes);
 }
 
-void ThunderBallApp::update(ScopeStack& frameScope)
+void ThunderBallApp::update(ScopeStack& frameScope, RenderDevice& renderDevice)
 {
-	m_pRenderDevice->update();
+	renderDevice.update();
 }
 
-void ThunderBallApp::render(ScopeStack& frameScope)
+void ThunderBallApp::render(ScopeStack& frameScope, RenderDevice& renderDevice)
 {
-	m_pRenderDevice->render();
+	renderDevice.render();
 }
 
-void ThunderBallApp::resize(uint32_t width, uint32_t height)
+void ThunderBallApp::resize(RenderDevice& renderDevice, uint32_t width, uint32_t height)
 {
-	m_pRenderDevice->recreateSwapChain();
+	renderDevice.recreateSwapChain();
 	m_screenWidth = width;
 	m_screenHeight = height;
 }

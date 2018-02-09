@@ -10,11 +10,11 @@ public:
 
 	static Application* GetApplication() {	return ms_application;	}
 
-	virtual void initialize(ScopeStack& scopeStack);
+	virtual void initialize(ScopeStack& scopeStack, RenderDevice& renderDevice);
 	virtual void cleanup();
-	virtual void update(ScopeStack& frameScope);
-	virtual void render(ScopeStack& frameScope);
-	virtual void resize(uint32_t width, uint32_t height);
+	virtual void update(ScopeStack& frameScope, RenderDevice& renderDevice);
+	virtual void render(ScopeStack& frameScope, RenderDevice& renderDevice);
+	virtual void resize(RenderDevice& renderDevice, uint32_t width, uint32_t height);
 
 	inline const char *getApplicationName()				{ return m_appName;				}
 	inline uint32_t getScreenWidth()					{ return m_screenWidth;			}
@@ -23,8 +23,6 @@ public:
 	inline GLFWwindow *getGLFWwindow()					{ return m_glfwWindow;			}
 	inline void setGLFWwindow(GLFWwindow *glfwWindow)	{ m_glfwWindow = glfwWindow;	}
 #endif // defined(WIND32)
-	inline RenderDevice& getRenderDevice()				{ return *m_pRenderDevice;		}
-	inline void setRenderDevice(RenderDevice *renderDevice) { m_pRenderDevice = renderDevice; }
 protected:
 	const char			*m_appName;
 	uint32_t			m_screenWidth;
@@ -32,7 +30,5 @@ protected:
 #if defined(WIN32)
 	GLFWwindow			*m_glfwWindow;
 #endif // defined(WIND32)
-	ScopeStack			*m_scopeStack;
-	RenderDevice		*m_pRenderDevice;
 	static Application *ms_application;
 };

@@ -28,8 +28,8 @@ struct GPUMemoryBlock
 
 struct GPUMemAllocInfo
 {
-	GPUMemAllocInfo(GPUMemoryBlock& _memoryBlock, uint32_t _offset)
-		: memoryBlock(_memoryBlock), offset(_offset) {}
+	GPUMemAllocInfo(GPUMemoryBlock& _memoryBlock, uint32_t _size, uint32_t _offset)
+		: memoryBlock(_memoryBlock), size(_size), offset(_offset) {}
 
 	~GPUMemAllocInfo() { memoryBlock.m_offset = offset; }
 
@@ -39,11 +39,11 @@ struct GPUMemAllocInfo
 };
 
 static GPUMemoryBlock _dummyMemoryBlock = {};
-static GPUMemAllocInfo _dummyMemAllocInfo = { _dummyMemoryBlock, 0 };
+static GPUMemAllocInfo _dummyMemAllocInfo = { _dummyMemoryBlock, 0, 0 };
 
 struct RenderDevice
 {
-	RenderDevice(ScopeStack& scopeStack);
+	RenderDevice(ScopeStack& scope, uint32_t maxWidth, uint32_t maxHeight, GLFWwindow* window = nullptr);
 	~RenderDevice();
 
 	struct GPUMemoryManager
@@ -164,6 +164,9 @@ struct RenderDevice
 
 	Mesh								**m_meshes;
 	uint32_t							m_numMeshes;
+
+	uint32_t							m_maxWidth;
+	uint32_t							m_maxHeight;
 };
 
 struct Buffer

@@ -14,12 +14,10 @@ static void size_callback(GLFWwindow* window, int width, int height)
 {
 	if (width == 0 || height == 0) return;
 
-	Application *app = static_cast<Application *>(glfwGetWindowUserPointer(window));
-	if (app)
+	RenderDevice *pRenderDevice = static_cast<RenderDevice *>(glfwGetWindowUserPointer(window));
+	if (pRenderDevice)
 	{
-		RenderDevice& rd = app->getRenderDevice();
-		rd.recreateSwapChain();
-		app->resize(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
+		Application::GetApplication()->resize(*pRenderDevice, static_cast<uint32_t>(width), static_cast<uint32_t>(height));
 	}
 }
 
@@ -41,13 +39,16 @@ int main(int argc, char *argv[])
 	{
 		ScopeStack scopeStack(allocator, "Main");
 
-
+		const GLFWvidmode *primaryScreenMode = glfwGetVideoMode(glfwGetPrimaryMonitor());
+		RenderDevice *pRenderDevice = scopeStack.newObject<RenderDevice>(scopeStack, static_cast<uint32_t>(primaryScreenMode->width), static_cast<uint32_t>(primaryScreenMode->height), window);
 #if defined(WIN32)
 		app->setGLFWwindow(window);
 #endif
-		app->initialize(scopeStack);
+		app->initialize(scopeStack, *pRenderDevice);
 
-		glfwSetWindowUserPointer(window, app);
+		app->resize(*pRenderDevice, app->getScreenWidth(), app->getScreenHeight());
+
+		glfwSetWindowUserPointer(window, pRenderDevice);
 		glfwSetKeyCallback(window, key_callback);
 		glfwSetWindowSizeCallback(window, size_callback);
 
@@ -57,8 +58,8 @@ int main(int argc, char *argv[])
 			char frameName[16];
 			sprintf_s(frameName, sizeof(frameName), "Frame %lld", frameNum++);
 			ScopeStack frameScope(scopeStack, frameName, false);
-			app->update(frameScope);
-			app->render(frameScope);
+			app->update(frameScope, *pRenderDevice);
+			app->render(frameScope, *pRenderDevice);
 
 			glfwPollEvents();
 		}

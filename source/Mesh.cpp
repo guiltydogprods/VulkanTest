@@ -109,11 +109,11 @@ uint8_t* Mesh::processMeshRecursive(uint8_t* ptr, uint32_t& renderableIndex, uin
 
 		for (uint32_t i = 0; i < numStreams; ++i)
 		{
-			VkCommandBuffer copyCommandBuffer = Application::GetApplication()->getRenderDevice().beginSingleUseCommandBuffer();
+			VkCommandBuffer copyCommandBuffer = renderDevice.beginSingleUseCommandBuffer();
 			VkBufferCopy copyRegion = {};
 
 			uint8_t* vertexData = (uint8_t*)srcVertexBuffer + sizeof(Import::VertexBuffer);
-			StagingBuffer vertexStagingBuffer(Application::GetApplication()->getRenderDevice(), numVertices * stride, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+			StagingBuffer vertexStagingBuffer(renderDevice, numVertices * stride, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 			uint8_t *destPtr = static_cast<uint8_t *>(vertexStagingBuffer.mapMemory(0, VK_WHOLE_SIZE));
 			if (destPtr)
 			{
@@ -125,14 +125,14 @@ uint8_t* Mesh::processMeshRecursive(uint8_t* ptr, uint32_t& renderableIndex, uin
 			copyRegion.dstOffset = vertexBufferOffset;
 			vkCmdCopyBuffer(copyCommandBuffer, vertexStagingBuffer.m_buffer, vertexBuffer.m_buffer, 1, &copyRegion);
 
-			Application::GetApplication()->getRenderDevice().endSingleUseCommandBuffer(copyCommandBuffer);
+			renderDevice.endSingleUseCommandBuffer(copyCommandBuffer);
 		}
 
-		VkCommandBuffer copyCommandBuffer = Application::GetApplication()->getRenderDevice().beginSingleUseCommandBuffer();
+		VkCommandBuffer copyCommandBuffer = renderDevice.beginSingleUseCommandBuffer();
 		VkBufferCopy copyRegion = {};
 
 		uint32_t* indices = (uint32_t*)((uint8_t*)srcVertexBuffer + verticesSize);
-		StagingBuffer indexStagingBuffer(Application::GetApplication()->getRenderDevice(), numIndices * sizeof(uint32_t), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+		StagingBuffer indexStagingBuffer(renderDevice, numIndices * sizeof(uint32_t), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 		uint8_t *destPtr = static_cast<uint8_t *>(indexStagingBuffer.mapMemory(0, VK_WHOLE_SIZE));
 		if (destPtr)
 		{
@@ -143,7 +143,7 @@ uint8_t* Mesh::processMeshRecursive(uint8_t* ptr, uint32_t& renderableIndex, uin
 		copyRegion.dstOffset = indexBufferOffset;
 		copyRegion.size = numIndices * sizeof(uint32_t);
 		vkCmdCopyBuffer(copyCommandBuffer, indexStagingBuffer.m_buffer, indexBuffer.m_buffer, 1, &copyRegion);
-		Application::GetApplication()->getRenderDevice().endSingleUseCommandBuffer(copyCommandBuffer);
+		renderDevice.endSingleUseCommandBuffer(copyCommandBuffer);
 
 		vertexBufferOffset += (numVertices * stride);
 		indexBufferOffset += (numIndices * sizeof(uint32_t));

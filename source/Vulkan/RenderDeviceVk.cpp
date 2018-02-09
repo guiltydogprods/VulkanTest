@@ -47,7 +47,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugReportFlagsEXT flags,
 	return VK_FALSE;
 }
 
-RenderDevice::RenderDevice(ScopeStack& scope)
+RenderDevice::RenderDevice(ScopeStack& scope, uint32_t maxWidth, uint32_t maxHeight, GLFWwindow* window)
 	: m_selectedDevice(0)
 	, m_vkInstance(nullptr)
 	, m_vkPhysicalDeviceCount(0)
@@ -68,17 +68,18 @@ RenderDevice::RenderDevice(ScopeStack& scope)
 	, m_vkSwapChainImageViews(nullptr)
 	, m_vkSwapChainFramebuffers(nullptr)
 	, m_vkCommandBuffers(nullptr)
-//	, m_vkSampler(nullptr)
 	, m_depthBufferMemAllocInfo(_dummyMemAllocInfo)
 	, m_numTextures(0)
 	, m_meshes(nullptr)
 	, m_numMeshes(0)
+	, m_maxWidth(maxWidth)
+	, m_maxHeight(maxHeight)
 {
 	GPUMemoryManager::Instance().setRenderDevice(this);
 
 	Application* app = Application::GetApplication();
 
-	initialize(scope, app->getGLFWwindow());
+	initialize(scope, window);
 }
 
 RenderDevice::~RenderDevice()
@@ -529,8 +530,8 @@ void RenderDevice::createDepthBuffer(ScopeStack& scope)
 	imageCreateInfo.flags = 0;
 	imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
 	imageCreateInfo.format = m_vkDepthBufferFormat;
-	imageCreateInfo.extent.width = m_vkSwapChainExtent.width;
-	imageCreateInfo.extent.height = m_vkSwapChainExtent.height;
+	imageCreateInfo.extent.width = m_maxWidth;			// Create depth buffer at fullscreen resolution.  Application will resize on initialisation.
+	imageCreateInfo.extent.height = m_maxHeight;
 	imageCreateInfo.extent.depth = 1;
 	imageCreateInfo.mipLevels = 1;
 	imageCreateInfo.arrayLayers = 1;
@@ -693,8 +694,6 @@ void RenderDevice::recreateSwapChain()
 
 void RenderDevice::recreateDepthBuffer()
 {
-//	m_vkDepthBufferFormat = VK_FORMAT_D32_SFLOAT;
-
 	VkImageCreateInfo  imageCreateInfo = {};
 	imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 	imageCreateInfo.pNext = nullptr;
@@ -1517,7 +1516,7 @@ GPUMemoryBlock::~GPUMemoryBlock()
 		vkFreeMemory(m_vkDevice, m_memory, nullptr);
 }
 
-static uint32_t alignedSize(uint32_t size, uint32_t align = 16)
+static uint32_t align(uint32_t size, uint32_t align = 16)
 {
 	return (size + (align - 1)) & ~(align - 1);
 }
@@ -1525,8 +1524,9 @@ static uint32_t alignedSize(uint32_t size, uint32_t align = 16)
 GPUMemAllocInfo& GPUMemoryBlock::allocate(ScopeStack& scope, uint32_t size, uint32_t alignment)
 {
 	uint32_t offset = m_offset;
-	m_offset += alignedSize(size, alignment);	// +(size + (alignment - 1)) & ~(alignment - 1);
-	GPUMemAllocInfo *info = scope.newObject<GPUMemAllocInfo>(*this, offset);
+	uint32_t alignedSize = align(size, alignment);
+	m_offset += alignedSize;
+	GPUMemAllocInfo *info = scope.newObject<GPUMemAllocInfo>(*this, alignedSize, offset);
 
 	return *info;
 }
