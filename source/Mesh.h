@@ -112,8 +112,8 @@ struct Mesh
 	Mesh(ScopeStack& scopeStack, const char *filename, RenderDevice& renderDevice, int64_t& vertexBufferOffset, int64_t& indexBufferOffset);
 	~Mesh();
 
-	void		processMeshChunk(ScopeStack& scopeStack, ChunkId *chunk, RenderDevice& renderDevice, int64_t& vertexBufferOffset, int64_t& indexBufferOffset);
-	uint8_t*	processMeshRecursive(uint8_t* ptr, uint32_t& renderableIndex, uint32_t& nodeIndex, int32_t parentIndex, RenderDevice& renderDevice, int64_t& vertexBufferOffset, int64_t& indexBufferOffset);
+	void		processMeshChunk(ScopeStack& scopeStack, File& file, RenderDevice& renderDevice, int64_t& vertexBufferOffset, int64_t& indexBufferOffset);
+	uint8_t*	processMeshRecursive(uint8_t *ptr, uint32_t& renderableIndex, uint32_t& nodeIndex, int32_t parentIndex, RenderDevice& renderDevice, int64_t& vertexBufferOffset, int64_t& indexBufferOffset);
 
 
 	MeshNode	*m_hierarchy;

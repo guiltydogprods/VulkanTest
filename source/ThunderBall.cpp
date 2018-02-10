@@ -48,7 +48,7 @@ void ThunderBallApp::initialize(ScopeStack& scopeStack, RenderDevice& renderDevi
 	}
 
 	renderDevice.createUniformBuffer(scopeStack);
-	renderDevice.finalize(m_meshes, m_numMeshes);
+	renderDevice.finalize(scopeStack, m_meshes, m_numMeshes);
 }
 
 void ThunderBallApp::update(ScopeStack& frameScope, RenderDevice& renderDevice)
@@ -58,12 +58,11 @@ void ThunderBallApp::update(ScopeStack& frameScope, RenderDevice& renderDevice)
 
 void ThunderBallApp::render(ScopeStack& frameScope, RenderDevice& renderDevice)
 {
-	renderDevice.render();
+	renderDevice.render(frameScope);
 }
 
-void ThunderBallApp::resize(RenderDevice& renderDevice, uint32_t width, uint32_t height)
+void ThunderBallApp::resize(uint32_t width, uint32_t height)
 {
-	renderDevice.recreateSwapChain();
 	m_screenWidth = width;
 	m_screenHeight = height;
 }

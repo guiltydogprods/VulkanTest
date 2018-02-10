@@ -63,10 +63,10 @@ struct RenderDevice
 	};
 
 	void initialize(ScopeStack& scope, GLFWwindow *window);
-	void finalize(Mesh **meshes, uint32_t numMeshes);
+	void finalize(ScopeStack& scope, Mesh **meshes, uint32_t numMeshes);
 	void cleanup();
 	void update();
-	void render();
+	void render(ScopeStack& scope);
 
 	void cleanupSwapChain();
 	void createInstance();
@@ -81,15 +81,15 @@ struct RenderDevice
 	void createSwapChain(ScopeStack* scope = nullptr);
 	void createRenderPass();
 	void createFramebuffers();
-	void createGraphicsPipeline();
+	void createGraphicsPipeline(ScopeStack& scope);
 	void createDescriptorSet();
 	void createCommandBuffers(Mesh **meshes, uint32_t numMeshes);
-	void recreateSwapChain();
+	void recreateSwapChain(ScopeStack& scope);
 	void recreateDepthBuffer();
 
 	int32_t getMemoryType(uint32_t typeBits, VkFlags properties);
 	VkDeviceMemory allocateGpuMemory(VkDeviceSize size, VkDeviceSize alignment, uint32_t typeIndex);
-	VkShaderModule createShaderModule(const char *filename);
+	VkShaderModule createShaderModule(ScopeStack& scope, const char *filename);
 	VkCommandBuffer beginSingleUseCommandBuffer();
 	void endSingleUseCommandBuffer(VkCommandBuffer commandBuffer);
 	void transitionImageLayout(VkCommandBuffer commandBuffer, VkImage image, VkImageSubresourceRange& subresourceRange, VkImageLayout oldLayout, VkImageLayout newLayout);

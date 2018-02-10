@@ -14,33 +14,35 @@ Mesh::Mesh(ScopeStack& scopeStack, const char *filename, RenderDevice& renderDev
 	, m_numMaterials(0)
 {
 	File file(filename);
-	file.load();
 
-	uint8_t *buffer = file.m_buffer;
+	ModelHeader header = {};
+	file.readBytes(sizeof(ModelHeader), &header);
 
 	bool bLoaded = false;
-	uint8_t *ptr = (uint8_t *)(buffer + sizeof(ModelHeader));
 	while (!bLoaded)
 	{
-		ChunkId *chunk = (ChunkId *)ptr;
-		if (!strncmp(chunk->tag, "TEXT", 4))
+		ChunkId chunk = {};
+		size_t bytesRead = file.readBytes(sizeof(ChunkId), &chunk);
+		AssertMsg((bytesRead == sizeof(ChunkId)), "File read failure.\n");
+		if (!strncmp(chunk.tag, "TEXT", 4))
 		{
 //			LoadTextureChunk(chunk);
+			file.skipBytes(chunk.size - sizeof(ChunkId));
 		}
-		else if (!strncmp(chunk->tag, "MATL", 4))
+		else if (!strncmp(chunk.tag, "MATL", 4))
 		{
 //			LoadMaterialChunk(chunk);
+			file.skipBytes(chunk.size - sizeof(ChunkId));
 		}
-		else if (!strncmp(chunk->tag, "MESH", 4))
+		else if (!strncmp(chunk.tag, "MESH", 4))
 		{
-			processMeshChunk(scopeStack, chunk, renderDevice, vertexBufferOffset, indexBufferOffset);
+			processMeshChunk(scopeStack, file, renderDevice, vertexBufferOffset, indexBufferOffset);
 			bLoaded = true;
 		}
 		else
 		{
 //			AssertMsg(0, "Invalid Chunk");
 		}
-		ptr = ptr + chunk->size;
 	}
 }
 
@@ -48,21 +50,34 @@ Mesh::~Mesh()
 {
 }
 
-void Mesh::processMeshChunk(ScopeStack& scopeStack, ChunkId *chunk, RenderDevice& renderDevice, int64_t& vertexBufferOffset, int64_t& indexBufferOffset)
+void Mesh::processMeshChunk(ScopeStack& scopeStack, File& file, RenderDevice& renderDevice, int64_t& vertexBufferOffset, int64_t& indexBufferOffset)
 {
+	MeshChunk meshChunk = {};
+	file.rewindBytes(sizeof(ChunkId));
+	size_t bytesRead = file.readBytes(sizeof(meshChunk), &meshChunk);
+	AssertMsg((bytesRead == sizeof(meshChunk)), "File read failure.\n");
 
-	MeshChunk *meshChunk = (MeshChunk *)chunk;
-	uint8_t *ptr = (uint8_t *)chunk + sizeof(MeshChunk);
-	m_numNodes = meshChunk->numMeshes;
+	m_numNodes = meshChunk.numMeshes;
 	m_hierarchy = static_cast<MeshNode *>(scopeStack.allocate(sizeof(MeshNode) * m_numNodes));
 	m_transforms = static_cast<glm::mat4x4 *>(scopeStack.allocate(sizeof(glm::mat4x4) * m_numNodes));
-	MeshInfo *info = (MeshInfo *)ptr;
-	m_numRenderables = info->numRenderables;;
+	MeshInfo meshInfo = {};
+	bytesRead = file.readBytes(sizeof(meshInfo), &meshInfo);
+	AssertMsg((bytesRead == sizeof(meshInfo)), "File read failure.\n");
+	m_numRenderables = meshInfo.numRenderables;
 	m_renderables = static_cast<Renderable *>(scopeStack.allocate(sizeof(Renderable) * m_numRenderables));
+	uint64_t location = file.rewindBytes(sizeof(MeshInfo));
+
+// We have allocated all the permanent data  we need, so we can read the remainder of the file into a temporary buffer.
+	ScopeStack tempScope(scopeStack, "Temp");
+	uint64_t bytesToRead = file.m_sizeInBytes - location;
+	uint8_t *ptr = static_cast<uint8_t *>(tempScope.allocate(bytesToRead));
+	file.readBytes(bytesToRead, ptr);
+	AssertMsg((bytesRead == sizeof(meshInfo)), "File read failure.\n");
+
 	uint32_t renderableIndex = 0;
 	uint32_t nodeIndex = 0;
 	int32_t parentIndex = -1;
-	for (uint32_t i = 0; i < meshChunk->numMeshes; ++i)
+	for (uint32_t i = 0; i < meshChunk.numMeshes; ++i)
 	{
 		processMeshRecursive(ptr, renderableIndex, nodeIndex, parentIndex, renderDevice, vertexBufferOffset, indexBufferOffset);
 	}

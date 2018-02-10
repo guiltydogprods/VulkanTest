@@ -75,7 +75,7 @@ RenderDevice::RenderDevice(ScopeStack& scope, uint32_t maxWidth, uint32_t maxHei
 	, m_maxWidth(maxWidth)
 	, m_maxHeight(maxHeight)
 {
-	GPUMemoryManager::Instance(nullptr);
+	GPUMemoryManager::Instance(this);
 	Application* app = Application::GetApplication();
 
 	initialize(scope, window);
@@ -100,13 +100,13 @@ void RenderDevice::initialize(ScopeStack& scope, GLFWwindow *window)
 	m_numTextures = 2;
 }
 
-void RenderDevice::finalize(Mesh **meshes, uint32_t numMeshes)
+void RenderDevice::finalize(ScopeStack& scope, Mesh **meshes, uint32_t numMeshes)
 {
 	m_meshes = meshes;
 	m_numMeshes = numMeshes;
 	createRenderPass();
 	createFramebuffers();
-	createGraphicsPipeline();
+	createGraphicsPipeline(scope);
 	createDescriptorSet();
 	createCommandBuffers(meshes, numMeshes);
 }
@@ -201,14 +201,14 @@ void RenderDevice::update()
 		angle -= 360.0f;
 }
 
-void RenderDevice::render()
+void RenderDevice::render(ScopeStack& scope)
 {
 	uint32_t imageIndex;
 	VkResult res = vkAcquireNextImageKHR(m_vkDevice, m_vkSwapChain, UINT64_MAX, m_vkImageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
 
 	if (res == VK_ERROR_OUT_OF_DATE_KHR)
 	{
-		recreateSwapChain();
+		recreateSwapChain(scope);
 		return;
 	}
 	else if (res != VK_SUCCESS && res != VK_SUBOPTIMAL_KHR) 
@@ -263,11 +263,13 @@ void RenderDevice::render()
 	presentInfo.pImageIndices = &imageIndex;
 
 	res = vkQueuePresentKHR(m_vkPresentQueue, &presentInfo);
-
-	if (res != VK_SUCCESS) 
+	if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR)
 	{
-		print("failed to submit present command buffer\n");
-//		exit(EXIT_FAILURE);
+		recreateSwapChain(scope);
+	}
+	else if (res != VK_SUCCESS)
+	{
+		print("failed to present swap chain image!");
 	}
 }
 
@@ -677,7 +679,7 @@ void RenderDevice::createSwapChain(ScopeStack *scope)
 	}
 }
 
-void RenderDevice::recreateSwapChain()
+void RenderDevice::recreateSwapChain(ScopeStack& scope)
 {
 	vkDeviceWaitIdle(m_vkDevice);
 
@@ -686,7 +688,7 @@ void RenderDevice::recreateSwapChain()
 	createSwapChain();
 	recreateDepthBuffer();
 	createRenderPass();
-	createGraphicsPipeline();
+	createGraphicsPipeline(scope);
 	createFramebuffers();
 	createCommandBuffers(m_meshes, m_numMeshes);
 }
@@ -862,10 +864,10 @@ void RenderDevice::createFramebuffers()
 	print("created framebuffers for swap chain image views.\n");
 }
 
-void RenderDevice::createGraphicsPipeline()
+void RenderDevice::createGraphicsPipeline(ScopeStack& scope)
 {
-	VkShaderModule vertexShaderModule = createShaderModule("shader.vert.spv");
-	VkShaderModule fragmentShaderModule = createShaderModule("shader.frag.spv");
+	VkShaderModule vertexShaderModule = createShaderModule(scope, "shader.vert.spv");
+	VkShaderModule fragmentShaderModule = createShaderModule(scope, "shader.frag.spv");
 
 	VkPipelineShaderStageCreateInfo vertexShaderCreateInfo = {};
 	vertexShaderCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -1306,10 +1308,10 @@ VkDeviceMemory RenderDevice::allocateGpuMemory(VkDeviceSize size, VkDeviceSize a
 	return memory;
 }
 
-VkShaderModule RenderDevice::createShaderModule(const char *filename)
+VkShaderModule RenderDevice::createShaderModule(ScopeStack& scope,  const char *filename)
 {
 	File file(filename, "Shaders/");
-	file.load();
+	file.load(scope);
 
 	VkShaderModuleCreateInfo createInfo = {};
 	createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;

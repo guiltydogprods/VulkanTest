@@ -53,7 +53,7 @@ public:
 			if (scopeName)
 			{
 				strcpy_s(m_scopeName, sizeof(m_scopeName), scopeName);
-				print("Push Scope: (0x%016x) %s\n", (size_t)this, m_scopeName);
+				print("Push Scope: %s\n", m_scopeName);
 				if (strlen(scopeName) < 1)
 				{
 					scopeName = (scopeName + 1) - 1;
@@ -71,7 +71,7 @@ public:
 	{
 #ifdef MEM_DEBUG
 		if (m_bLog)
-			print("Pop Scope: (0x%016x) %s\n", (size_t)this, m_scopeName);
+			print("Pop Scope: %s\n", m_scopeName);
 #endif
 		for (Finalizer *f = m_finalizerChain; f; f = f->chain)
 		{
