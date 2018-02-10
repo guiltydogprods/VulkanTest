@@ -1,9 +1,9 @@
 #include "stdafx.h"
 #include "Mesh.h"
-#include "Framework/File.h"
-#include "Vulkan/RenderDeviceVk.h"
+#include "File.h"
+#include "../Vulkan/RenderDeviceVk.h"
 
-Mesh::Mesh(ScopeStack& scopeStack, const char *filename, RenderDevice& renderDevice, int64_t& vertexBufferOffset, int64_t& indexBufferOffset)
+Mesh::Mesh(ScopeStack& scopeStack, RenderDevice& renderDevice, const char *filename, int64_t& vertexBufferOffset, int64_t& indexBufferOffset)
 	: m_hierarchy(nullptr)
 	, m_transforms(nullptr)
 	, m_renderables(nullptr)

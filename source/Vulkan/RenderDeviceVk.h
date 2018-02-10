@@ -63,7 +63,7 @@ struct RenderDevice
 	};
 
 	void initialize(ScopeStack& scope, GLFWwindow *window);
-	void finalize(ScopeStack& scope, Mesh **meshes, uint32_t numMeshes);
+	void finalize(ScopeStack& scope, Mesh **meshes, uint32_t numMeshes, Texture **textures, uint32_t numTextures);
 	void cleanup();
 	void update();
 	void render(ScopeStack& scope);
@@ -154,11 +154,11 @@ struct RenderDevice
 	VkImageView							m_vkDepthBufferView;
 	std::reference_wrapper<GPUMemAllocInfo> m_depthBufferMemAllocInfo;
 
-	uint32_t							m_numTextures;
-	Texture								*m_textures[2];
-
 	Mesh								**m_meshes;
+	Texture								*m_textures[2];
 	uint32_t							m_numMeshes;
+	uint32_t							m_numTextures;
+
 
 	uint32_t							m_maxWidth;
 	uint32_t							m_maxHeight;

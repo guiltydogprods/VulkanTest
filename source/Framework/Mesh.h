@@ -109,7 +109,7 @@ struct Buffer;
 
 struct Mesh
 {
-	Mesh(ScopeStack& scopeStack, const char *filename, RenderDevice& renderDevice, int64_t& vertexBufferOffset, int64_t& indexBufferOffset);
+	Mesh(ScopeStack& scopeStack, RenderDevice& renderDevice, const char *filename, int64_t& vertexBufferOffset, int64_t& indexBufferOffset);
 	~Mesh();
 
 	void		processMeshChunk(ScopeStack& scopeStack, File& file, RenderDevice& renderDevice, int64_t& vertexBufferOffset, int64_t& indexBufferOffset);

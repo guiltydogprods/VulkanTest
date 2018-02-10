@@ -2,7 +2,7 @@
 #include "RenderDeviceVk.h"
 #include "TextureVk.h"
 
-#include "../Mesh.h"
+#include "../Framework/Mesh.h"
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -100,10 +100,12 @@ void RenderDevice::initialize(ScopeStack& scope, GLFWwindow *window)
 	m_numTextures = 2;
 }
 
-void RenderDevice::finalize(ScopeStack& scope, Mesh **meshes, uint32_t numMeshes)
+void RenderDevice::finalize(ScopeStack& scope, Mesh **meshes, uint32_t numMeshes, Texture **textures, uint32_t numTextures)
 {
 	m_meshes = meshes;
 	m_numMeshes = numMeshes;
+//	m_textures = textures;
+//	m_numTextures = numTextures;
 	createRenderPass();
 	createFramebuffers();
 	createGraphicsPipeline(scope);

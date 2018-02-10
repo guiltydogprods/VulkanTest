@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "ThunderBall.h"
-#include "Mesh.h"
+#include "Framework/Mesh.h"
+#include "Framework/ResourceManager.h"
 #include "Vulkan/RenderDeviceVk.h"
 
 ThunderBallApp s_thundeBallApp;
@@ -19,36 +20,35 @@ ThunderBallApp::~ThunderBallApp()
 	print("ThunderBallApp::dtor\n");
 }
 
-void ThunderBallApp::initialize(ScopeStack& scopeStack, RenderDevice& renderDevice)
+void ThunderBallApp::initialize(ScopeStack& scope, RenderDevice& renderDevice)
 {
-	const char *meshes[] =
-	{
-		"Donut2.s3d",
-		"Sphere.s3d",
-//		"box.s3d"
-	};
-
 	uint32_t verticesSize = 100000;
 	uint32_t indicesSize = 100000;
 
 	renderDevice.createVertexFormat();
-	renderDevice.m_vertexBuffer = scopeStack.newObject<Buffer>(scopeStack, renderDevice, verticesSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	renderDevice.m_vertexBuffer = scope.newObject<Buffer>(scope, renderDevice, verticesSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 	renderDevice.m_vertexBuffer->bindMemory();
-	int64_t vertexBufferOffset = 0;
-	renderDevice.m_indexBuffer = scopeStack.newObject<Buffer>(scopeStack, renderDevice, indicesSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	renderDevice.m_indexBuffer = scope.newObject<Buffer>(scope, renderDevice, indicesSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 	renderDevice.m_indexBuffer->bindMemory();
-	int64_t indexBufferOffset = 0;
 
-	m_numMeshes = sizeof(meshes) / sizeof(const char *);
-	m_meshes = static_cast<Mesh **>(scopeStack.allocate(sizeof(Mesh *) * m_numMeshes));
-
-	for (uint32_t i = 0; i < m_numMeshes; ++i)
+	ResourceName resources[] =
 	{
-		m_meshes[i] = scopeStack.newObject<Mesh>(scopeStack, meshes[i], renderDevice, vertexBufferOffset, indexBufferOffset);
-	}
+		{ "Sphere.s3d",	kRTMesh		},
+		{ "Donut2.s3d",	kRTMesh		},
+//		{ "box.s3d", kRTMesh		},
+//		{ "stone34.dds", kRTTexture },
+//		{ "rock7.dds", kRTTexture },
+	};
 
-	renderDevice.createUniformBuffer(scopeStack);
-	renderDevice.finalize(scopeStack, m_meshes, m_numMeshes);
+	ResourceManager *resourceManager = scope.newObject<ResourceManager>(scope, renderDevice, resources);
+
+	uint32_t numMeshes = resourceManager->m_numMeshes;
+	Mesh **meshes = resourceManager->m_meshes;
+	uint32_t numTextures = resourceManager->m_numTextures;
+	Texture **textures = resourceManager->m_textures;
+
+	renderDevice.createUniformBuffer(scope);
+	renderDevice.finalize(scope, meshes, numMeshes, textures,  numTextures);
 }
 
 void ThunderBallApp::update(ScopeStack& frameScope, RenderDevice& renderDevice)
