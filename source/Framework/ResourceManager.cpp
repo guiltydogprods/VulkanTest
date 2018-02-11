@@ -25,7 +25,9 @@ void ResourceManager::registerResources(ScopeStack&scope, RenderDevice& renderDe
 	}
 
 	m_meshes = static_cast<Mesh **>(scope.allocate(sizeof(Mesh *) * numMeshes));
+	m_numMeshes = numMeshes;
 	m_textures = static_cast<Texture **>(scope.allocate(sizeof(Texture *) * numTextures));
+	m_numTextures = numTextures;
 
 	uint32_t meshIndex = 0;
 	uint32_t textureIndex = 0;

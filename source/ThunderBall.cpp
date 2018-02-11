@@ -35,9 +35,9 @@ void ThunderBallApp::initialize(ScopeStack& scope, RenderDevice& renderDevice)
 	{
 		{ "Sphere.s3d",	kRTMesh		},
 		{ "Donut2.s3d",	kRTMesh		},
-//		{ "box.s3d", kRTMesh		},
-//		{ "stone34.dds", kRTTexture },
-//		{ "rock7.dds", kRTTexture },
+		{ "box.s3d", kRTMesh		},
+		{ "stone34.dds", kRTTexture },
+		{ "rock7.dds", kRTTexture },
 	};
 
 	ResourceManager *resourceManager = scope.newObject<ResourceManager>(scope, renderDevice, resources);

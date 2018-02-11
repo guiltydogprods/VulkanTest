@@ -75,9 +75,12 @@ RenderDevice::RenderDevice(ScopeStack& scope, uint32_t maxWidth, uint32_t maxHei
 	, m_maxWidth(maxWidth)
 	, m_maxHeight(maxHeight)
 {
-	GPUMemoryManager::Instance(this);
-	Application* app = Application::GetApplication();
+	createInstance();
+	createSurface(window);
+	createDevice(scope);
 
+	GPUMemoryManager& memMgr = GPUMemoryManager::Instance(this);
+	memMgr.m_bufferImageGranularity = static_cast<uint32_t>(m_vkPhysicalDeviceProperties[m_selectedDevice].limits.bufferImageGranularity);
 	initialize(scope, window);
 }
 
@@ -88,24 +91,18 @@ RenderDevice::~RenderDevice()
 
 void RenderDevice::initialize(ScopeStack& scope, GLFWwindow *window)
 {
-	createInstance();
-	createSurface(window);
-	createDevice(scope);
 	createSemaphores();
 	createSwapChain(scope);	
 	createCommandPool();
 	createDepthBuffer(scope);
-	m_textures[0] = scope.newObject<Texture>(scope, *this, "stone34.dds");
-	m_textures[1] = scope.newObject<Texture>(scope, *this, "rock7.dds");
-	m_numTextures = 2;
 }
 
 void RenderDevice::finalize(ScopeStack& scope, Mesh **meshes, uint32_t numMeshes, Texture **textures, uint32_t numTextures)
 {
 	m_meshes = meshes;
 	m_numMeshes = numMeshes;
-//	m_textures = textures;
-//	m_numTextures = numTextures;
+	m_textures = textures;
+	m_numTextures = numTextures;
 	createRenderPass();
 	createFramebuffers();
 	createGraphicsPipeline(scope);
@@ -555,7 +552,7 @@ void RenderDevice::createDepthBuffer(ScopeStack& scope)
 	VkMemoryRequirements memRequirements;
 	vkGetImageMemoryRequirements(m_vkDevice, m_vkDepthBufferImage, &memRequirements);
 	uint32_t memoryTypeIndex = getMemoryType(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-	m_depthBufferMemAllocInfo = GPUMemoryManager::Instance().allocate(scope, memRequirements.size, memRequirements.alignment, memoryTypeIndex);
+	m_depthBufferMemAllocInfo = GPUMemoryManager::Instance().allocate(scope, memRequirements.size, memRequirements.alignment, imageCreateInfo.tiling == VK_IMAGE_TILING_OPTIMAL ? (1 << 8) | memoryTypeIndex : memoryTypeIndex);
 	if (vkBindImageMemory(m_vkDevice, m_vkDepthBufferImage, m_depthBufferMemAllocInfo.get().memoryBlock.m_memory, m_depthBufferMemAllocInfo.get().offset) != VK_SUCCESS)
 	{
 		print("failed to bind memory to image\n");
@@ -1290,6 +1287,7 @@ int32_t RenderDevice::getMemoryType(uint32_t typeBits, VkMemoryPropertyFlags pro
 	{
 		if ((typeBits & (1 << i)) && ((deviceMemoryProperties.memoryTypes[i].propertyFlags & properties) == properties))
 		{
+			print("typeBits = 0x%08x -> typeIndex = %d\n", typeBits, i);
 			return i;
 		}
 	}
@@ -1459,6 +1457,7 @@ void RenderDevice::copyImage(VkCommandBuffer commandBuffer, VkImage srcImage, Vk
 RenderDevice::GPUMemoryManager::GPUMemoryManager(RenderDevice& renderDevice)
 	: m_renderDevice(renderDevice)
 	, m_numBlocks(0)
+	, m_bufferImageGranularity(0)
 {
 	for (uint32_t i = 0; i < kMaxGPUMemoryBlocks; ++i)
 		m_blocks[i] = nullptr;
@@ -1476,9 +1475,12 @@ GPUMemAllocInfo& RenderDevice::GPUMemoryManager::allocate(ScopeStack& scope, VkD
 	AssertMsg((size < kGPUMemoryBlockSize), "Requested allocation larger than kGPUMemoryBlockSize.\n");
 	uint32_t size32 = static_cast<uint32_t>(size);
 	uint32_t alignment32 = static_cast<uint32_t>(alignment);
+	uint32_t optimal = typeIndex >> 8;	// optimal will be 1 if we're using OPTIMAL tiling mode, 0 if LINEAR.
+	typeIndex = typeIndex & 0xff;
 	GPUMemoryBlock& memBlock = findBlock(scope, size32, alignment32, typeIndex);
 	print("GPU allocate size = %ld, alignment = %ld, typeIndex = %d\n", size, alignment, typeIndex);
-	return memBlock.allocate(scope, size32, alignment32);
+	alignment32 = (optimal != memBlock.m_optimal) ? std::max(alignment32, m_bufferImageGranularity) : alignment32;
+	return memBlock.allocate(scope, size32, alignment32, optimal);
 }
 
 GPUMemoryBlock& RenderDevice::GPUMemoryManager::findBlock(ScopeStack& scope, VkDeviceSize size, VkDeviceSize alignment, uint32_t typeIndex)
@@ -1502,6 +1504,7 @@ GPUMemoryBlock::GPUMemoryBlock(VkDevice vkDevice, uint32_t size, uint32_t typeIn
 	, m_size(0)
 	, m_offset(0)
 	, m_typeIndex(typeIndex)
+	, m_optimal(0)
 {
 	VkMemoryAllocateInfo allocInfo = {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
@@ -1524,12 +1527,12 @@ static uint32_t align(uint32_t size, uint32_t align = 16)
 	return (size + (align - 1)) & ~(align - 1);
 }
 
-GPUMemAllocInfo& GPUMemoryBlock::allocate(ScopeStack& scope, uint32_t size, uint32_t alignment)
+GPUMemAllocInfo& GPUMemoryBlock::allocate(ScopeStack& scope, uint32_t size, uint32_t alignment, uint32_t optimal)
 {
-	uint32_t offset = m_offset;
-	uint32_t alignedSize = align(size, alignment);
-	m_offset += alignedSize;
-	GPUMemAllocInfo *info = scope.newObject<GPUMemAllocInfo>(*this, alignedSize, offset);
+	uint32_t offset = align(m_offset, alignment);
+	m_offset = offset + size;
+	m_optimal = optimal;
+	GPUMemAllocInfo *info = scope.newObject<GPUMemAllocInfo>(*this, size, offset);
 
 	return *info;
 }

@@ -16,14 +16,14 @@ struct GPUMemoryBlock
 	GPUMemoryBlock() {};
 	~GPUMemoryBlock();
 
-	GPUMemAllocInfo& allocate(ScopeStack& scope, uint32_t size, uint32_t alignment);
+	GPUMemAllocInfo& allocate(ScopeStack& scope, uint32_t size, uint32_t alignment, uint32_t optimal);
 
 	VkDevice m_vkDevice;
 	VkDeviceMemory m_memory;
 	uint32_t m_size;
 	uint32_t m_offset;
 	uint32_t m_typeIndex;
-	uint32_t m_pad;
+	uint32_t m_optimal;
 };
 
 struct GPUMemAllocInfo
@@ -58,6 +58,7 @@ struct RenderDevice
 		RenderDevice& m_renderDevice;
 		GPUMemoryBlock *m_blocks[kMaxGPUMemoryBlocks];
 		uint32_t m_numBlocks;
+		uint32_t m_bufferImageGranularity;
 	private:
 		GPUMemoryManager(RenderDevice& renderDevice);
 	};
@@ -155,7 +156,7 @@ struct RenderDevice
 	std::reference_wrapper<GPUMemAllocInfo> m_depthBufferMemAllocInfo;
 
 	Mesh								**m_meshes;
-	Texture								*m_textures[2];
+	Texture								**m_textures;
 	uint32_t							m_numMeshes;
 	uint32_t							m_numTextures;
 
