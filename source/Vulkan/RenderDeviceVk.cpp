@@ -1287,7 +1287,7 @@ int32_t RenderDevice::getMemoryType(uint32_t typeBits, VkMemoryPropertyFlags pro
 	{
 		if ((typeBits & (1 << i)) && ((deviceMemoryProperties.memoryTypes[i].propertyFlags & properties) == properties))
 		{
-			print("typeBits = 0x%08x -> typeIndex = %d\n", typeBits, i);
+//			print("typeBits = 0x%08x -> typeIndex = %d\n", typeBits, i);
 			return i;
 		}
 	}
