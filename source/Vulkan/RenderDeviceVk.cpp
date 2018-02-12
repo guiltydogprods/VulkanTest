@@ -4,6 +4,9 @@
 
 #include "../Framework/Mesh.h"
 
+//#define FORCE_NVIDIA
+//#define FORCE_INTEL
+
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include "glm/glm.hpp"
@@ -398,6 +401,11 @@ void RenderDevice::createDevice(ScopeStack& scope)
 		if (powerStatus.ACLineStatus == 0 && m_vkPhysicalDeviceCount > 1 && m_vkPhysicalDeviceProperties[1].deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU)
 			m_selectedDevice = 1;				// Automatically select Integrated GPU if available when on battery power. 
 	}
+#endif
+#if defined(FORCE_NVIDIA)
+	m_selectedDevice = 0;
+#elif defined(FORCE_INTEL)
+	m_selectedDevice = 1;
 #endif
 
 	print("Selected Device: %s\n", m_vkPhysicalDeviceProperties[m_selectedDevice].deviceName);
