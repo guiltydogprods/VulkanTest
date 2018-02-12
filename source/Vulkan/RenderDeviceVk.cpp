@@ -11,8 +11,6 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include "glm/gtx/transform.hpp"
 
-#define USE_SECONDARY_DEVICE
-
 const char* validationLayers[] = 
 {
 	"VK_LAYER_LUNARG_standard_validation"
@@ -380,10 +378,12 @@ void RenderDevice::createSurface(GLFWwindow *window)
 void RenderDevice::createDevice(ScopeStack& scope)
 {
 	vkEnumeratePhysicalDevices(m_vkInstance, &m_vkPhysicalDeviceCount, nullptr);
-#ifdef USE_SECONDARY_DEVICE
-	if (m_vkPhysicalDeviceCount > 1)
-		m_selectedDevice = 1;
-#endif
+	SYSTEM_POWER_STATUS powerStatus = {};
+	if (GetSystemPowerStatus(&powerStatus))
+	{
+		if (powerStatus.ACLineStatus == 0 && m_vkPhysicalDeviceCount > 1)
+			m_selectedDevice = 1;											// Automatically select Intel device when on battery power. 
+	}
 
 	m_vkPhysicalDevices = static_cast<VkPhysicalDevice *>(scope.allocate(sizeof(VkPhysicalDevice) * m_vkPhysicalDeviceCount));
 	vkEnumeratePhysicalDevices(m_vkInstance, &m_vkPhysicalDeviceCount, m_vkPhysicalDevices);
