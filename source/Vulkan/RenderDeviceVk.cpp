@@ -378,12 +378,6 @@ void RenderDevice::createSurface(GLFWwindow *window)
 void RenderDevice::createDevice(ScopeStack& scope)
 {
 	vkEnumeratePhysicalDevices(m_vkInstance, &m_vkPhysicalDeviceCount, nullptr);
-	SYSTEM_POWER_STATUS powerStatus = {};
-	if (GetSystemPowerStatus(&powerStatus))
-	{
-		if (powerStatus.ACLineStatus == 0 && m_vkPhysicalDeviceCount > 1)
-			m_selectedDevice = 1;											// Automatically select Intel device when on battery power. 
-	}
 
 	m_vkPhysicalDevices = static_cast<VkPhysicalDevice *>(scope.allocate(sizeof(VkPhysicalDevice) * m_vkPhysicalDeviceCount));
 	vkEnumeratePhysicalDevices(m_vkInstance, &m_vkPhysicalDeviceCount, m_vkPhysicalDevices);
@@ -396,6 +390,15 @@ void RenderDevice::createDevice(ScopeStack& scope)
 		vkGetPhysicalDeviceMemoryProperties(m_vkPhysicalDevices[i], &m_vkPhysicalDeviceMemoryProperties[i]);
 		vkGetPhysicalDeviceFeatures(m_vkPhysicalDevices[i], &m_vkPhysicalDeviceFeatures[i]);
 	}
+
+#ifdef WIN32
+	SYSTEM_POWER_STATUS powerStatus = {};
+	if (GetSystemPowerStatus(&powerStatus))
+	{
+		if (powerStatus.ACLineStatus == 0 && m_vkPhysicalDeviceCount > 1 && m_vkPhysicalDeviceProperties[1].deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU)
+			m_selectedDevice = 1;				// Automatically select Integrated GPU if available when on battery power. 
+	}
+#endif
 
 	print("Selected Device: %s\n", m_vkPhysicalDeviceProperties[m_selectedDevice].deviceName);
 
