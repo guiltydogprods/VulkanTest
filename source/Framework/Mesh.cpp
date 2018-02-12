@@ -1,6 +1,7 @@
 #include "stdafx.h"
-#include "Mesh.h"
 #include "File.h"
+#include "Mesh.h"
+#include "../Vulkan/BufferVk.h"
 #include "../Vulkan/RenderDeviceVk.h"
 
 Mesh::Mesh(ScopeStack& scopeStack, RenderDevice& renderDevice, const char *filename, int64_t& vertexBufferOffset, int64_t& indexBufferOffset)

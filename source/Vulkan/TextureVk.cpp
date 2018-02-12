@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "TextureVk.h"
+#include "BufferVk.h"
 #include "RenderDeviceVk.h"
 
 Texture::Texture(ScopeStack& scope, RenderDevice& renderDevice, const char *filename)

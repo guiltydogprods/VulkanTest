@@ -2,6 +2,7 @@
 #include "ThunderBall.h"
 #include "Framework/Mesh.h"
 #include "Framework/ResourceManager.h"
+#include "Vulkan/BufferVk.h"
 #include "Vulkan/RenderDeviceVk.h"
 
 ThunderBallApp s_thundeBallApp;
