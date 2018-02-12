@@ -11,7 +11,7 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include "glm/gtx/transform.hpp"
 
-//#define USE_SECONDARY_DEVICE
+#define USE_SECONDARY_DEVICE
 
 const char* validationLayers[] = 
 {
@@ -190,7 +190,7 @@ void RenderDevice::update()
 
 	glm::mat4x4 projectionMatrix = glm::frustum(left, right, bottom, top, nearZ, farZ);
 
-	UniformBufferData *uboData = static_cast<UniformBufferData *>(m_uniformBuffer->mapMemory(m_uniformBuffer->m_memAllocInfo.get().offset, m_uniformBuffer->m_memAllocInfo.get().size));
+	UniformBufferData *uboData = static_cast<UniformBufferData *>(m_uniformBuffer->mapMemory());
 	uboData->tranformationMatrix[0] = projectionMatrix * viewMatrix * modelMatrix;
 	uboData->tranformationMatrix[1] = projectionMatrix * viewMatrix * modelMatrix2;
 	m_uniformBuffer->unmapMemory();
@@ -1580,7 +1580,7 @@ void *Buffer::mapMemory(VkDeviceSize offset, VkDeviceSize size)
 	AssertMsg((size == VK_WHOLE_SIZE || size <= m_allocatedSize), "Error: requested size too large.\n");
 	AssertMsg((m_memoryPropertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT), "Error: VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT not set.\n");
 	void *data = nullptr;
-	VkResult res = vkMapMemory(m_renderDevice.m_vkDevice, m_memAllocInfo.get().memoryBlock.m_memory, offset, size, 0, &data);
+	VkResult res = vkMapMemory(m_renderDevice.m_vkDevice, m_memAllocInfo.get().memoryBlock.m_memory, m_memAllocInfo.get().offset + offset, size, 0, &data);
 	AssertMsg(res == VK_SUCCESS, "vkMapMemory failed (res = %d).", static_cast<int32_t>(res));
 	return data;
 }
