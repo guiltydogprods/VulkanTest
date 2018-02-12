@@ -190,7 +190,7 @@ void RenderDevice::update()
 
 	glm::mat4x4 projectionMatrix = glm::frustum(left, right, bottom, top, nearZ, farZ);
 
-	UniformBufferData *uboData = static_cast<UniformBufferData *>(m_uniformBuffer->mapMemory());
+	UniformBufferData *uboData = static_cast<UniformBufferData *>(m_uniformBuffer->mapMemory(m_uniformBuffer->m_memAllocInfo.get().offset, m_uniformBuffer->m_memAllocInfo.get().size));
 	uboData->tranformationMatrix[0] = projectionMatrix * viewMatrix * modelMatrix;
 	uboData->tranformationMatrix[1] = projectionMatrix * viewMatrix * modelMatrix2;
 	m_uniformBuffer->unmapMemory();
@@ -1102,8 +1102,8 @@ void RenderDevice::createDescriptorSet()
 
 	// Update descriptor set with uniform binding
 	VkDescriptorBufferInfo descriptorBufferInfo = {};
-	descriptorBufferInfo.buffer = m_uniformBuffer->m_buffer; //m_vkUniformBuffer;
-	descriptorBufferInfo.offset = m_uniformBuffer->m_memAllocInfo.get().offset;	// 0;
+	descriptorBufferInfo.buffer = m_uniformBuffer->m_buffer;
+	descriptorBufferInfo.offset = 0;
 	descriptorBufferInfo.range = sizeof(UniformBufferData);
 
 	VkWriteDescriptorSet writeDescriptorSet[5] = {};
