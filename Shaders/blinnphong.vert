@@ -9,19 +9,7 @@ layout(location = 0) in vec3 position;
 layout(location = 1) in vec3 normal;
 layout(location = 2) in vec2 texCoord;
 
-layout(binding = 0, std430) readonly buffer MODEL_MATRIX_BLOCK
-{
-	mat4    model_matrix[];
-};
-
-layout(binding = 0, std140) uniform TRANSFORM_BLOCK
-{
-	mat4    view_matrix;
-	mat4    proj_matrix;
-	mat4    view_proj_matrix;
-};
-
-out VS_OUT
+layout(location = 0) out VS_OUT
 {
     vec3 N;
     vec3 L;
@@ -30,19 +18,40 @@ out VS_OUT
 	flat int material_id;
 } vs_out;
 
-uniform vec3 light_pos = vec3(3.0, 10.0, 0.0);
+out gl_PerVertex
+{
+	vec4 gl_Position;
+};
+
+layout (binding = 0) uniform MODEL_MATRIX_BLOCK
+{
+	mat4    model_matrix[2];
+};
+
+layout(binding = 1) uniform TRANSFORM_BLOCK
+{
+	mat4    view_matrix;
+	mat4    proj_matrix;
+	mat4    view_proj_matrix;
+};
+/*
+layout(binding = 2, std140) uniform LIGHTS
+{
+	vec3 light_pos;
+};
+*/
+layout (push_constant) uniform pushConstants_t
+{
+    layout (offset = 0) uint drawId;
+} pushConstants;
 
 void main(void)
 {
-#ifdef GL_ARB_shader_draw_parameters
-	mat4 mv_matrix = view_matrix * model_matrix[gl_DrawIDARB];
-	vs_out.N = mat3(model_matrix[gl_DrawIDARB]) * normal;
+	vec3 light_pos = vec3(3.0, 10.0, 0.0);
+
+	mat4 mv_matrix = view_matrix * model_matrix[pushConstants.drawId];
+	vs_out.N = mat3(model_matrix[pushConstants.drawId]) * normal;
 	vs_out.material_id = gl_BaseInstanceARB;
-#else
-	mat4 mv_matrix = view_matrix * model_matrix[0];
-	vs_out.N = mat3(model_matrix[0]) * normal;
-	vs_out.material_id = 0;
-#endif
 
 	vec4 P = mv_matrix * vec4(position, 1.0);
     vs_out.L = light_pos - P.xyz;
