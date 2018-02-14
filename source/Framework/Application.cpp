@@ -2,10 +2,8 @@
 
 Application *Application::ms_application = nullptr;
 
-Application::Application(const char *applicationName, uint32_t screenWidth, uint32_t screenHeight)
+Application::Application(const char *applicationName)
 	: m_appName(applicationName)
-	, m_screenWidth(screenWidth)
-	, m_screenHeight(screenHeight)
 	, m_bWasResized(false)
 {
 	ms_application = this;
@@ -37,4 +35,7 @@ void Application::render(ScopeStack& frameScope, RenderDevice& renderDevice)
 
 void Application::resize(uint32_t width, uint32_t height)
 {
+	m_screenWidth = width;
+	m_screenHeight = height;
+	m_bWasResized = true;
 }

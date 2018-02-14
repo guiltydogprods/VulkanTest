@@ -5,7 +5,7 @@ struct RenderDevice;
 class Application
 {
 public:
-	Application(const char *appName, uint32_t screenWidth, uint32_t screenHeight);
+	Application(const char *appName);
 	virtual ~Application();
 
 	static Application* GetApplication() {	return ms_application;	}
@@ -23,8 +23,8 @@ public:
 	inline GLFWwindow *getGLFWwindow()					{ return m_glfwWindow;			}
 	inline void setGLFWwindow(GLFWwindow *glfwWindow)	{ m_glfwWindow = glfwWindow;	}
 #endif // defined(WIND32)
-	inline bool getWasResize()							{ return m_bWasResized;			}
-	inline void clearWasResize()						{ m_bWasResized = false;		}
+	inline bool getWasResized()							{ return m_bWasResized;			}
+	inline void clearWasResized()						{ m_bWasResized = false;		}
 
 protected:
 	const char			*m_appName;
@@ -33,6 +33,6 @@ protected:
 #if defined(WIN32)
 	GLFWwindow			*m_glfwWindow;
 #endif // defined(WIND32)
-	bool				*m_bWasResized;
+	bool				m_bWasResized;
 	static Application *ms_application;
 };

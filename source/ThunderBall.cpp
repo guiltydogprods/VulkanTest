@@ -8,11 +8,9 @@
 ThunderBallApp s_thundeBallApp;
 
 const char		*kApplicationName = "Thunder Ball";
-const uint32_t	kScreenWidth = 1920;
-const uint32_t	kScreenHeight = 1080;
 
 ThunderBallApp::ThunderBallApp()
-	: Application(kApplicationName, kScreenWidth, kScreenHeight)
+	: Application(kApplicationName)
 {
 }
 
@@ -60,10 +58,4 @@ void ThunderBallApp::update(ScopeStack& frameScope, RenderDevice& renderDevice)
 void ThunderBallApp::render(ScopeStack& frameScope, RenderDevice& renderDevice)
 {
 	renderDevice.render(frameScope);
-}
-
-void ThunderBallApp::resize(uint32_t width, uint32_t height)
-{
-	m_screenWidth = width;
-	m_screenHeight = height;
 }

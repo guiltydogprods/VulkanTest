@@ -32,14 +32,16 @@ int main(int argc, char *argv[])
 	}
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
-	GLFWwindow* window = glfwCreateWindow(app->getScreenWidth(), app->getScreenHeight(), app->getApplicationName(), nullptr /*glfwGetPrimaryMonitor()*/, nullptr);
+	const GLFWvidmode *primaryScreenMode = glfwGetVideoMode(glfwGetPrimaryMonitor());
+	uint32_t startUpScreenWidth = static_cast<uint32_t>(static_cast<float>(primaryScreenMode->width) * 0.6f);
+	uint32_t startUpScreenHeight = static_cast<uint32_t>(static_cast<float>(primaryScreenMode->height) * 0.6f);
+	GLFWwindow* window = glfwCreateWindow(startUpScreenWidth, startUpScreenHeight, app->getApplicationName(), nullptr /*glfwGetPrimaryMonitor()*/, nullptr);
 
 	uint8_t *memoryBlock = static_cast<uint8_t *>(_aligned_malloc(kMemMgrSize, kMemMgrAlign));
 	LinearAllocator allocator(memoryBlock, kMemMgrSize);
 	{
 		ScopeStack systemScope(allocator, "System");
 
-		const GLFWvidmode *primaryScreenMode = glfwGetVideoMode(glfwGetPrimaryMonitor());
 		RenderDevice *pRenderDevice = systemScope.newObject<RenderDevice>(systemScope, static_cast<uint32_t>(primaryScreenMode->width), static_cast<uint32_t>(primaryScreenMode->height), window);
 #if defined(WIN32)
 		app->setGLFWwindow(window);
@@ -48,7 +50,7 @@ int main(int argc, char *argv[])
 
 		app->initialize(initScope, *pRenderDevice);
 
-		app->resize(app->getScreenWidth(), app->getScreenHeight());
+		app->resize(startUpScreenWidth, startUpScreenHeight);	// Force the app to resize.  This will recreate the swapchain which initially gets created at Monitor resolution.
 
 		glfwSetWindowUserPointer(window, app);
 		glfwSetKeyCallback(window, key_callback);
@@ -65,10 +67,10 @@ int main(int argc, char *argv[])
 			app->render(frameScope, *pRenderDevice);
 
 			glfwPollEvents();
-			if (app->getWasResize())
+			if (app->getWasResized())
 			{
 				pRenderDevice->recreateSwapChain(frameScope);
-				app->clearWasResize();
+				app->clearWasResized();
 			}
 		}
 	}
