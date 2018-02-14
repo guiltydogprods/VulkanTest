@@ -46,7 +46,7 @@ void ThunderBallApp::initialize(ScopeStack& scope, RenderDevice& renderDevice)
 	uint32_t numTextures = resourceManager->m_numTextures;
 	Texture **textures = resourceManager->m_textures;
 
-	renderDevice.createUniformBuffer(scope);
+	renderDevice.createUniformBuffers(scope);
 	renderDevice.finalize(scope, meshes, numMeshes, textures,  numTextures);
 }
 

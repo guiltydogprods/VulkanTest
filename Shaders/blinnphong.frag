@@ -36,12 +36,12 @@ layout(binding = 3) uniform texture2D textures[2];
 layout (push_constant) uniform pushConstants_t
 {
     layout (offset = 0) uint drawId;
-} pushConstants;
+};
 
 void main(void)
 {
 //	vec3 Kd = materials[fs_in.material_id].texture_id >= 0 ? materials[fs_in.material_id].diffuse.xyz * texture(textures[materials[fs_in.material_id].texture_id], fs_in.tex_coord).xyz : materials[fs_in.material_id].diffuse.xyz;
-	vec3 Kd = texture(sampler2D(textures[pushConstants.drawId], texSampler[pushConstants.drawId]), fs_in.tex_coord).xyz;
+	vec3 Kd = texture(sampler2D(textures[drawId], texSampler[drawId]), fs_in.tex_coord).xyz;
 
 	vec3 Ks = vec3(1, 1, 1);	//materials[fs_in.material_id].specular;
 	float m = 64.0;				//materials[fs_in.material_id].specularPower;
@@ -54,8 +54,7 @@ void main(void)
  
 	float nDotL = clamp(dot(n, l), 0.0, 1.0);
 	float nDotH = clamp(dot(n, h), 0.0, 1.0);
-	Lo += (Kd + Ks * pow(nDotH, m)) * nDotL;
-
+	Lo = (Kd + Ks * pow(nDotH, m)) * max(nDotL, 0.1);
 	color = vec4(Lo, 1.0);
 }
 

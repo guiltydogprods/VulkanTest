@@ -77,7 +77,7 @@ struct RenderDevice
 	void createCommandPool();
 	void createDepthBuffer(ScopeStack& scope);
 	void createVertexFormat();
-	void createUniformBuffer(ScopeStack& scope);
+	void createUniformBuffers(ScopeStack& scope);
 	void createSwapChain(ScopeStack& scope);
 	void createSwapChain(ScopeStack* scope = nullptr);
 	void createRenderPass();
@@ -124,7 +124,8 @@ struct RenderDevice
 
 	Buffer								*m_vertexBuffer;
 	Buffer								*m_indexBuffer;
-	Buffer								*m_uniformBuffer;
+	Buffer								*m_sceneUniformBuffer;
+	Buffer								*m_modelMatrixUniformBuffer;
 
 	VkVertexInputBindingDescription		m_vkVertexBindingDescription;
 	uint32_t							m_vkVertexAttributeDescriptionCount;

@@ -35,9 +35,16 @@ struct Vertex
 	float texCoord[2];
 };
 
-struct UniformBufferData
+struct ModelUniformData
 {
 	glm::mat4x4 tranformationMatrix[2];
+};
+
+struct SceneUniformData
+{
+	glm::mat4x4 viewMatrix;
+	glm::mat4x4 projectionMatrix;
+	glm::mat4x4 viewProjectionMatrix;
 };
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objType, uint64_t obj, size_t location, int32_t code, const char* layerPrefix, const char* msg, void* userData)
@@ -192,10 +199,17 @@ void RenderDevice::update()
 
 	glm::mat4x4 projectionMatrix = glm::frustum(left, right, bottom, top, nearZ, farZ);
 
-	UniformBufferData *uboData = static_cast<UniformBufferData *>(m_uniformBuffer->mapMemory());
-	uboData->tranformationMatrix[0] = projectionMatrix * viewMatrix * modelMatrix;
-	uboData->tranformationMatrix[1] = projectionMatrix * viewMatrix * modelMatrix2;
-	m_uniformBuffer->unmapMemory();
+	SceneUniformData *sceneUniformData = static_cast<SceneUniformData *>(m_sceneUniformBuffer->mapMemory());
+	sceneUniformData->viewMatrix = viewMatrix;
+	sceneUniformData->projectionMatrix = projectionMatrix;
+	sceneUniformData->viewProjectionMatrix = projectionMatrix * viewMatrix;
+	m_sceneUniformBuffer->unmapMemory();
+
+	ModelUniformData *modelUniformData = static_cast<ModelUniformData *>(m_modelMatrixUniformBuffer->mapMemory());
+	modelUniformData->tranformationMatrix[0] = modelMatrix;
+	modelUniformData->tranformationMatrix[1] = modelMatrix2;
+	m_modelMatrixUniformBuffer->unmapMemory();
+
 
 	angle += 1.0f;
 	if (angle > 360.0f)
@@ -620,10 +634,13 @@ void RenderDevice::createVertexFormat()
 	m_vkVertexAttributeDescriptions[2].offset = sizeof(float) * 6;
 }
 
-void RenderDevice::createUniformBuffer(ScopeStack& scopeStack)
+void RenderDevice::createUniformBuffers(ScopeStack& scopeStack)
 {
-	m_uniformBuffer = scopeStack.newObject<Buffer>(scopeStack, *this, sizeof(UniformBufferData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-	m_uniformBuffer->bindMemory();
+	m_sceneUniformBuffer = scopeStack.newObject<Buffer>(scopeStack, *this, sizeof(SceneUniformData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+	m_sceneUniformBuffer->bindMemory();
+
+	m_modelMatrixUniformBuffer = scopeStack.newObject<Buffer>(scopeStack, *this, sizeof(ModelUniformData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+	m_modelMatrixUniformBuffer->bindMemory();
 }
 
 void RenderDevice::createSwapChain(ScopeStack& scope)
@@ -877,8 +894,8 @@ void RenderDevice::createFramebuffers()
 
 void RenderDevice::createGraphicsPipeline(ScopeStack& scope)
 {
-	VkShaderModule vertexShaderModule = createShaderModule(scope, "shader.vert.spv");
-	VkShaderModule fragmentShaderModule = createShaderModule(scope, "shader.frag.spv");
+	VkShaderModule vertexShaderModule = createShaderModule(scope, "blinnphong.vert.spv");
+	VkShaderModule fragmentShaderModule = createShaderModule(scope, "blinnphong.frag.spv");
 
 	VkPipelineShaderStageCreateInfo vertexShaderCreateInfo = {};
 	vertexShaderCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -978,25 +995,32 @@ void RenderDevice::createGraphicsPipeline(ScopeStack& scope)
 	colorBlendCreateInfo.blendConstants[3] = 0.0f;
 
 	VkDescriptorSetLayoutBinding uboLayoutBinding = {};
+	uboLayoutBinding.binding = 0;
 	uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	uboLayoutBinding.descriptorCount = 1;
 	uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
+	VkDescriptorSetLayoutBinding ubo2LayoutBinding = {};
+	ubo2LayoutBinding.binding = 1;
+	ubo2LayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	ubo2LayoutBinding.descriptorCount = 1;
+	ubo2LayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
 	VkDescriptorSetLayoutBinding samplerLayoutBinding = {};
-	samplerLayoutBinding.binding = 1;
+	samplerLayoutBinding.binding = 2;
 	samplerLayoutBinding.descriptorCount = 2;
 	samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
 	samplerLayoutBinding.pImmutableSamplers = nullptr;
 	samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
 	VkDescriptorSetLayoutBinding texturesLayoutBinding = {};
-	texturesLayoutBinding.binding = 2;
+	texturesLayoutBinding.binding = 3;
 	texturesLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 	texturesLayoutBinding.descriptorCount = 2;
 	texturesLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 	texturesLayoutBinding.pImmutableSamplers = nullptr;
 
-	VkDescriptorSetLayoutBinding bindings[] = { uboLayoutBinding, samplerLayoutBinding, texturesLayoutBinding };
+	VkDescriptorSetLayoutBinding bindings[] = { uboLayoutBinding, ubo2LayoutBinding, samplerLayoutBinding, texturesLayoutBinding };
 	VkDescriptorSetLayoutCreateInfo descriptorLayoutCreateInfo = {};
 	descriptorLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 	descriptorLayoutCreateInfo.bindingCount = sizeof(bindings) / sizeof(bindings[0]);
@@ -1015,9 +1039,9 @@ void RenderDevice::createGraphicsPipeline(ScopeStack& scope)
 	const VkPushConstantRange ranges[] =
 	{
 		{
-			VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,    // stageFlags
-			0,                                      // offset
-			4                                       // size
+			VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,	// stageFlags
+			0,															// offset
+			4															// size
 		}
 	};
 
@@ -1071,17 +1095,19 @@ void RenderDevice::createGraphicsPipeline(ScopeStack& scope)
 
 void RenderDevice::createDescriptorSet()
 {
-	VkDescriptorPoolSize poolSizes[3] = {};
+	VkDescriptorPoolSize poolSizes[4] = {};
 	poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	poolSizes[0].descriptorCount = 1;
-	poolSizes[1].type = VK_DESCRIPTOR_TYPE_SAMPLER;
-	poolSizes[1].descriptorCount = 2;
-	poolSizes[2].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	poolSizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	poolSizes[1].descriptorCount = 1;
+	poolSizes[2].type = VK_DESCRIPTOR_TYPE_SAMPLER;
 	poolSizes[2].descriptorCount = 2;
+	poolSizes[3].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	poolSizes[3].descriptorCount = 2;
 
 	VkDescriptorPoolCreateInfo createInfo = {};
 	createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	createInfo.poolSizeCount = 3;
+	createInfo.poolSizeCount = 4;
 	createInfo.pPoolSizes = poolSizes;
 	createInfo.maxSets = 1;
 
@@ -1114,11 +1140,11 @@ void RenderDevice::createDescriptorSet()
 
 	// Update descriptor set with uniform binding
 	VkDescriptorBufferInfo descriptorBufferInfo = {};
-	descriptorBufferInfo.buffer = m_uniformBuffer->m_buffer;
+	descriptorBufferInfo.buffer = m_sceneUniformBuffer->m_buffer;
 	descriptorBufferInfo.offset = 0;
-	descriptorBufferInfo.range = sizeof(UniformBufferData);
+	descriptorBufferInfo.range = sizeof(SceneUniformData);
 
-	VkWriteDescriptorSet writeDescriptorSet[5] = {};
+	VkWriteDescriptorSet writeDescriptorSet[6] = {};
 	writeDescriptorSet[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	writeDescriptorSet[0].dstSet = m_vkDescriptorSet;
 	writeDescriptorSet[0].dstBinding = 0;
@@ -1126,6 +1152,19 @@ void RenderDevice::createDescriptorSet()
 	writeDescriptorSet[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	writeDescriptorSet[0].descriptorCount = 1;
 	writeDescriptorSet[0].pBufferInfo = &descriptorBufferInfo;
+
+	VkDescriptorBufferInfo descriptorBufferInfo2 = {};
+	descriptorBufferInfo2.buffer = m_modelMatrixUniformBuffer->m_buffer;
+	descriptorBufferInfo2.offset = 0;
+	descriptorBufferInfo2.range = sizeof(ModelUniformData);
+
+	writeDescriptorSet[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	writeDescriptorSet[1].dstSet = m_vkDescriptorSet;
+	writeDescriptorSet[1].dstBinding = 1;
+	writeDescriptorSet[1].dstArrayElement = 0;
+	writeDescriptorSet[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	writeDescriptorSet[1].descriptorCount = 1;
+	writeDescriptorSet[1].pBufferInfo = &descriptorBufferInfo2;
 
 	VkDescriptorImageInfo *imageInfo = static_cast<VkDescriptorImageInfo *>(alloca(sizeof(VkDescriptorImageInfo) * m_numTextures));
 	memset(imageInfo, 0, sizeof(VkDescriptorImageInfo) * m_numTextures);
@@ -1146,25 +1185,25 @@ void RenderDevice::createDescriptorSet()
 
 	for (uint32_t i = 0; i < m_numTextures; i++)
 	{
-		uint32_t di = 1 + i;
+		uint32_t di = 2 + i;
 		writeDescriptorSet[di].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		writeDescriptorSet[di].dstSet = m_vkDescriptorSet;
-		writeDescriptorSet[di].dstBinding = 1;
+		writeDescriptorSet[di].dstBinding = 2;
 		writeDescriptorSet[di].dstArrayElement = i;
 		writeDescriptorSet[di].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
 		writeDescriptorSet[di].descriptorCount = 1;
 		writeDescriptorSet[di].pImageInfo = &imageInfo[i];
 
-		di = 1 + m_numTextures + i;
+		di = 2 + m_numTextures + i;
 		writeDescriptorSet[di].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		writeDescriptorSet[di].dstSet = m_vkDescriptorSet;
-		writeDescriptorSet[di].dstBinding = 2;
+		writeDescriptorSet[di].dstBinding = 3;
 		writeDescriptorSet[di].dstArrayElement = i;
 		writeDescriptorSet[di].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 		writeDescriptorSet[di].descriptorCount = 1;
 		writeDescriptorSet[di].pImageInfo = &texImageInfo[i];
 	}
-	vkUpdateDescriptorSets(m_vkDevice, 1+2*m_numTextures, writeDescriptorSet, 0, nullptr);
+	vkUpdateDescriptorSets(m_vkDevice, 2+2*m_numTextures, writeDescriptorSet, 0, nullptr);
 }
 
 void RenderDevice::createCommandBuffers(Mesh **meshes, uint32_t numMeshes)
