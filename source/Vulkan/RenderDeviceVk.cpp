@@ -1071,7 +1071,7 @@ void RenderDevice::createGraphicsPipeline(ScopeStack& scope)
 
 void RenderDevice::createDescriptorSet()
 {
-	VkDescriptorPoolSize poolSizes[4] = {};
+	VkDescriptorPoolSize poolSizes[3] = {};
 	poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	poolSizes[0].descriptorCount = 1;
 	poolSizes[1].type = VK_DESCRIPTOR_TYPE_SAMPLER;
