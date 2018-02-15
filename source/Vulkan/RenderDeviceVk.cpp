@@ -610,14 +610,14 @@ void RenderDevice::createDepthBuffer(ScopeStack& scope)
 	endSingleUseCommandBuffer(commandBuffer);
 }
 
-void RenderDevice::createVertexFormat()
+void RenderDevice::createVertexFormat(ScopeStack& scope)
 {
 	m_vkVertexBindingDescription.binding = 0;
 	m_vkVertexBindingDescription.stride = sizeof(Vertex);
 	m_vkVertexBindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
 	m_vkVertexAttributeDescriptionCount = 3;
-	m_vkVertexAttributeDescriptions = new VkVertexInputAttributeDescription[m_vkVertexAttributeDescriptionCount];
+	m_vkVertexAttributeDescriptions = static_cast<VkVertexInputAttributeDescription *>(scope.allocate(sizeof(VkVertexInputAttributeDescription) * m_vkVertexAttributeDescriptionCount));
 	m_vkVertexAttributeDescriptions[0].binding = 0;
 	m_vkVertexAttributeDescriptions[0].location = 0;
 	m_vkVertexAttributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
@@ -699,7 +699,12 @@ void RenderDevice::createSwapChain(ScopeStack *scope)
 
 	vkGetSwapchainImagesKHR(m_vkDevice, m_vkSwapChain, &m_vkSwapChainImageCount, nullptr);
 	if (m_vkSwapChainImages == nullptr && scope != nullptr)
+	{
 		m_vkSwapChainImages = static_cast<VkImage *>(scope->allocate(sizeof(VkImage) * m_vkSwapChainImageCount));
+		m_vkSwapChainImageViews = static_cast<VkImageView *>(scope->allocate(sizeof(VkImageView) * m_vkSwapChainImageCount));
+		m_vkSwapChainFramebuffers = static_cast<VkFramebuffer *>(scope->allocate(sizeof(VkFramebuffer) * m_vkSwapChainImageCount));
+		m_vkCommandBuffers = static_cast<VkCommandBuffer *>(scope->allocate(sizeof(VkCommandBuffer) * m_vkSwapChainImageCount));
+	}
 	if (vkGetSwapchainImagesKHR(m_vkDevice, m_vkSwapChain, &m_vkSwapChainImageCount, m_vkSwapChainImages) != VK_SUCCESS) 
 	{
 		print("failed to acquire swap chain images\n");
@@ -839,9 +844,6 @@ void RenderDevice::createRenderPass()
 
 void RenderDevice::createFramebuffers()
 {
-	m_vkSwapChainImageViews = new VkImageView [m_vkSwapChainImageCount];
-	m_vkSwapChainFramebuffers = new VkFramebuffer [m_vkSwapChainImageCount];
-
 	// Create an image view for every image in the swap chain
 	for (uint32_t i = 0; i < m_vkSwapChainImageCount; i++)
 	{
@@ -1215,7 +1217,6 @@ void RenderDevice::createCommandBuffers(Mesh **meshes, uint32_t numMeshes)
 	commandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 	commandBufferAllocateInfo.commandBufferCount = m_vkSwapChainImageCount;
 
-	m_vkCommandBuffers = new VkCommandBuffer[m_vkSwapChainImageCount];
 	if (vkAllocateCommandBuffers(m_vkDevice, &commandBufferAllocateInfo, m_vkCommandBuffers) != VK_SUCCESS)
 	{
 		print("failed to create command buffers\n");

@@ -76,7 +76,7 @@ struct RenderDevice
 	void createSemaphores();
 	void createCommandPool();
 	void createDepthBuffer(ScopeStack& scope);
-	void createVertexFormat();
+	void createVertexFormat(ScopeStack& scope);
 	void createUniformBuffers(ScopeStack& scope);
 	void createSwapChain(ScopeStack& scope);
 	void createSwapChain(ScopeStack* scope = nullptr);
