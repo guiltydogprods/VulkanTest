@@ -66,11 +66,10 @@ void Mesh::processMeshChunk(ScopeStack& scopeStack, File& file, RenderDevice& re
 	AssertMsg((bytesRead == sizeof(meshInfo)), "File read failure.\n");
 	m_numRenderables = meshInfo.numRenderables;
 	m_renderables = static_cast<Renderable *>(scopeStack.allocate(sizeof(Renderable) * m_numRenderables));
-	uint64_t location = file.rewindBytes(sizeof(MeshInfo));
-
+	uint64_t currentLocation = file.rewindBytes(sizeof(MeshInfo));
 // We have allocated all the permanent data  we need, so we can read the remainder of the file into a temporary buffer.
 	ScopeStack tempScope(scopeStack, "Temp");
-	uint64_t bytesToRead = file.m_sizeInBytes - location;
+	uint64_t bytesToRead = file.m_sizeInBytes - currentLocation;
 	uint8_t *ptr = static_cast<uint8_t *>(tempScope.allocate(bytesToRead));
 	file.readBytes(bytesToRead, ptr);
 	AssertMsg((bytesRead == sizeof(meshInfo)), "File read failure.\n");
