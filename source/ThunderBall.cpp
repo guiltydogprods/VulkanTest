@@ -4,6 +4,7 @@
 #include "Framework/ResourceManager.h"
 #include "Vulkan/BufferVk.h"
 #include "Vulkan/RenderDeviceVk.h"
+#include "Vulkan/RenderTargetVk.h"
 
 ThunderBallApp s_thundeBallApp;
 

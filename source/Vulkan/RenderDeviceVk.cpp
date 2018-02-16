@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "RenderDeviceVk.h"
 #include "BufferVk.h"
+#include "RenderTargetVk.h"
 #include "TextureVk.h"
 
 #include "../Framework/Mesh.h"
@@ -104,6 +105,8 @@ void RenderDevice::initialize(ScopeStack& scope, GLFWwindow *window)
 	createSwapChain(scope);	
 	createCommandPool();
 	createDepthBuffer(scope);
+//	RenderTarget *depthTarget = scope.newObject<RenderTarget>(scope, *this, m_maxWidth, m_maxHeight, VK_FORMAT_D32_SFLOAT, VK_SAMPLE_COUNT_1_BIT);
+	RenderTarget *renderTarget = scope.newObject<RenderTarget>(scope, *this, m_maxWidth, m_maxHeight, VK_FORMAT_B8G8R8A8_UNORM, VK_SAMPLE_COUNT_4_BIT);
 }
 
 void RenderDevice::finalize(ScopeStack& scope, Mesh **meshes, uint32_t numMeshes, Texture **textures, uint32_t numTextures)
