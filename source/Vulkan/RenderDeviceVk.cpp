@@ -78,7 +78,7 @@ RenderDevice::RenderDevice(ScopeStack& scope, uint32_t maxWidth, uint32_t maxHei
 	, m_vkSwapChainImageViews(nullptr)
 	, m_vkSwapChainFramebuffers(nullptr)
 	, m_vkCommandBuffers(nullptr)
-	, m_depthBufferMemAllocInfo(_dummyMemAllocInfo)
+	, m_depthBuffer(nullptr)
 	, m_numTextures(0)
 	, m_meshes(nullptr)
 	, m_numMeshes(0)
@@ -104,9 +104,8 @@ void RenderDevice::initialize(ScopeStack& scope, GLFWwindow *window)
 	createSemaphores();
 	createSwapChain(scope);	
 	createCommandPool();
-	createDepthBuffer(scope);
-//	RenderTarget *depthTarget = scope.newObject<RenderTarget>(scope, *this, m_maxWidth, m_maxHeight, VK_FORMAT_D32_SFLOAT, VK_SAMPLE_COUNT_1_BIT);
-	RenderTarget *renderTarget = scope.newObject<RenderTarget>(scope, *this, m_maxWidth, m_maxHeight, VK_FORMAT_B8G8R8A8_UNORM, VK_SAMPLE_COUNT_4_BIT);
+	m_depthBuffer = scope.newObject<RenderTarget>(scope, *this, m_maxWidth, m_maxHeight, VK_FORMAT_D32_SFLOAT, VK_SAMPLE_COUNT_1_BIT);
+//	RenderTarget *renderTarget = scope.newObject<RenderTarget>(scope, *this, m_maxWidth, m_maxHeight, VK_FORMAT_B8G8R8A8_UNORM, VK_SAMPLE_COUNT_4_BIT);
 }
 
 void RenderDevice::finalize(ScopeStack& scope, Mesh **meshes, uint32_t numMeshes, Texture **textures, uint32_t numTextures)
@@ -136,9 +135,6 @@ void RenderDevice::cleanupSwapChain()
 	vkDestroyDescriptorSetLayout(m_vkDevice, m_vkDescriptorSetLayout, nullptr);
 	vkDestroyRenderPass(m_vkDevice, m_vkRenderPass, nullptr);
 
-	vkDestroyImageView(m_vkDevice, m_vkDepthBufferView, nullptr);
-	vkDestroyImage(m_vkDevice, m_vkDepthBufferImage, nullptr);
-
 	vkDestroySwapchainKHR(m_vkDevice, m_vkSwapChain, nullptr);
 }
 
@@ -156,9 +152,6 @@ void RenderDevice::cleanup()
 		vkDestroyImageView(m_vkDevice, m_vkSwapChainImageViews[i], nullptr);
 	}
 
-	vkDestroyImageView(m_vkDevice, m_vkDepthBufferView, nullptr);
-	vkDestroyImage(m_vkDevice, m_vkDepthBufferImage, nullptr);
-//	vkFreeMemory(m_vkDevice, m_depthBufferMemAllocInfo.memoryBlock, nullptr);
 	vkDestroySwapchainKHR(m_vkDevice, m_vkSwapChain, nullptr);
 	vkDestroyCommandPool(m_vkDevice, m_vkCommandPool, nullptr);
 	vkDestroySemaphore(m_vkDevice, m_vkImageAvailableSemaphore, nullptr);
@@ -212,7 +205,6 @@ void RenderDevice::update()
 	modelUniformData->tranformationMatrix[0] = modelMatrix;
 	modelUniformData->tranformationMatrix[1] = modelMatrix2;
 	m_modelMatrixUniformBuffer->unmapMemory();
-
 
 	angle += 1.0f;
 	if (angle > 360.0f)
@@ -549,70 +541,6 @@ void RenderDevice::createCommandPool()
 	}
 }
 
-void RenderDevice::createDepthBuffer(ScopeStack& scope)
-{
-	m_vkDepthBufferFormat = VK_FORMAT_D32_SFLOAT;
-
-	VkImageCreateInfo  imageCreateInfo = {};
-	imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-	imageCreateInfo.pNext = nullptr;
-	imageCreateInfo.flags = 0;
-	imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
-	imageCreateInfo.format = m_vkDepthBufferFormat;
-	imageCreateInfo.extent.width = m_maxWidth;			// Create depth buffer at fullscreen resolution.  Application will resize on initialisation.
-	imageCreateInfo.extent.height = m_maxHeight;
-	imageCreateInfo.extent.depth = 1;
-	imageCreateInfo.mipLevels = 1;
-	imageCreateInfo.arrayLayers = 1;
-	imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-	imageCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-	imageCreateInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-	imageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	imageCreateInfo.queueFamilyIndexCount = 0;
-	imageCreateInfo.pQueueFamilyIndices = nullptr;
-	imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_PREINITIALIZED;
-
-	if (vkCreateImage(m_vkDevice, &imageCreateInfo, nullptr, &m_vkDepthBufferImage) != VK_SUCCESS)
-	{
-		print("failed to create image for depth buffer\n");
-		exit(1);
-	}
-
-	VkMemoryRequirements memRequirements;
-	vkGetImageMemoryRequirements(m_vkDevice, m_vkDepthBufferImage, &memRequirements);
-	uint32_t memoryTypeIndex = getMemoryType(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-	m_depthBufferMemAllocInfo = GPUMemoryManager::Instance().allocate(scope, memRequirements.size, memRequirements.alignment, imageCreateInfo.tiling == VK_IMAGE_TILING_OPTIMAL ? (1 << 8) | memoryTypeIndex : memoryTypeIndex);
-	if (vkBindImageMemory(m_vkDevice, m_vkDepthBufferImage, m_depthBufferMemAllocInfo.get().memoryBlock.m_memory, m_depthBufferMemAllocInfo.get().offset) != VK_SUCCESS)
-	{
-		print("failed to bind memory to image\n");
-		exit(1);
-	}
-
-	VkImageSubresourceRange subresourceRange = {};
-	subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-	subresourceRange.baseMipLevel = 0;
-	subresourceRange.levelCount = 1;
-	subresourceRange.layerCount = 1;
-
-	VkImageViewCreateInfo viewInfo = {};
-	viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-	viewInfo.image = m_vkDepthBufferImage;
-	viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-	viewInfo.format = m_vkDepthBufferFormat;
-	viewInfo.subresourceRange = subresourceRange;
-	if (vkCreateImageView(m_vkDevice, &viewInfo, nullptr, &m_vkDepthBufferView) != VK_SUCCESS)
-	{
-		print("failed to create image view\n");
-		exit(EXIT_FAILURE);
-	}
-
-	VkCommandBuffer commandBuffer = beginSingleUseCommandBuffer();
-
-	transitionImageLayout(commandBuffer, m_vkDepthBufferImage, subresourceRange, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-
-	endSingleUseCommandBuffer(commandBuffer);
-}
-
 void RenderDevice::createVertexFormat(ScopeStack& scope)
 {
 	m_vkVertexBindingDescription.binding = 0;
@@ -722,70 +650,11 @@ void RenderDevice::recreateSwapChain(ScopeStack& scope)
 	cleanupSwapChain();
 
 	createSwapChain();
-	recreateDepthBuffer();
+	m_depthBuffer->resize(m_vkSwapChainExtent.width, m_vkSwapChainExtent.height);
 	createRenderPass();
 	createGraphicsPipeline(scope);
 	createFramebuffers();
 	createCommandBuffers(m_meshes, m_numMeshes);
-}
-
-void RenderDevice::recreateDepthBuffer()
-{
-	VkImageCreateInfo  imageCreateInfo = {};
-	imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-	imageCreateInfo.pNext = nullptr;
-	imageCreateInfo.flags = 0;
-	imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
-	imageCreateInfo.format = m_vkDepthBufferFormat;
-	imageCreateInfo.extent.width = m_vkSwapChainExtent.width;
-	imageCreateInfo.extent.height = m_vkSwapChainExtent.height;
-	imageCreateInfo.extent.depth = 1;
-	imageCreateInfo.mipLevels = 1;
-	imageCreateInfo.arrayLayers = 1;
-	imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-	imageCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-	imageCreateInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-	imageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	imageCreateInfo.queueFamilyIndexCount = 0;
-	imageCreateInfo.pQueueFamilyIndices = nullptr;
-	imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_PREINITIALIZED;
-
-	if (vkCreateImage(m_vkDevice, &imageCreateInfo, nullptr, &m_vkDepthBufferImage) != VK_SUCCESS)
-	{
-		print("failed to create image for depth buffer\n");
-		exit(1);
-	}
-
-	VkMemoryRequirements memRequirements;
-	vkGetImageMemoryRequirements(m_vkDevice, m_vkDepthBufferImage, &memRequirements);
-	uint32_t memoryTypeIndex = getMemoryType(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-	if (vkBindImageMemory(m_vkDevice, m_vkDepthBufferImage, m_depthBufferMemAllocInfo.get().memoryBlock.m_memory, m_depthBufferMemAllocInfo.get().offset) != VK_SUCCESS)
-	{
-		print("failed to bind memory to image\n");
-		exit(1);
-	}
-
-	VkImageSubresourceRange subresourceRange = {};
-	subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-	subresourceRange.baseMipLevel = 0;
-	subresourceRange.levelCount = 1;
-	subresourceRange.layerCount = 1;
-
-	VkImageViewCreateInfo viewInfo = {};
-	viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-	viewInfo.image = m_vkDepthBufferImage;
-	viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-	viewInfo.format = m_vkDepthBufferFormat;
-	viewInfo.subresourceRange = subresourceRange;
-	if (vkCreateImageView(m_vkDevice, &viewInfo, nullptr, &m_vkDepthBufferView) != VK_SUCCESS)
-	{
-		print("failed to create image view\n");
-		exit(EXIT_FAILURE);
-	}
-
-	VkCommandBuffer commandBuffer = beginSingleUseCommandBuffer();
-	transitionImageLayout(commandBuffer, m_vkDepthBufferImage, subresourceRange, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-	endSingleUseCommandBuffer(commandBuffer);
 }
 
 void RenderDevice::createRenderPass()
@@ -808,7 +677,7 @@ void RenderDevice::createRenderPass()
 	colorAttachmentReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
 	VkAttachmentDescription& depthAttachmentDescription = attachments[1];
-	depthAttachmentDescription.format = m_vkDepthBufferFormat;
+	depthAttachmentDescription.format = m_depthBuffer->m_vkFormat;
 	depthAttachmentDescription.samples = VK_SAMPLE_COUNT_1_BIT;
 	depthAttachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	depthAttachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -876,13 +745,13 @@ void RenderDevice::createFramebuffers()
 
 	for (uint32_t i = 0; i < m_vkSwapChainImageCount; i++)
 	{
-		VkImageView attachements[] = { m_vkSwapChainImageViews[i], m_vkDepthBufferView };
+		VkImageView attachements[] = { m_vkSwapChainImageViews[i], m_depthBuffer->m_vkImageView };
 
 		VkFramebufferCreateInfo createInfo = {};
 		createInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 		createInfo.renderPass = m_vkRenderPass;
 		createInfo.attachmentCount = sizeof(attachements) / sizeof(VkImageView);
-		createInfo.pAttachments = attachements;	//&m_vkSwapChainImageViews[i];
+		createInfo.pAttachments = attachements;
 		createInfo.width = m_vkSwapChainExtent.width;
 		createInfo.height = m_vkSwapChainExtent.height;
 		createInfo.layers = 1;
@@ -1029,7 +898,7 @@ void RenderDevice::createGraphicsPipeline(ScopeStack& scope)
 	VkDescriptorSetLayoutCreateInfo descriptorLayoutCreateInfo = {};
 	descriptorLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 	descriptorLayoutCreateInfo.bindingCount = sizeof(bindings) / sizeof(bindings[0]);
-	descriptorLayoutCreateInfo.pBindings = bindings;	// &uboLayoutBinding;
+	descriptorLayoutCreateInfo.pBindings = bindings;
 
 	if (vkCreateDescriptorSetLayout(m_vkDevice, &descriptorLayoutCreateInfo, nullptr, &m_vkDescriptorSetLayout) != VK_SUCCESS)
 	{
@@ -1334,7 +1203,7 @@ void RenderDevice::createCommandBuffers(Mesh **meshes, uint32_t numMeshes)
 	vkDestroyPipelineLayout(m_vkDevice, m_vkPipelineLayout, nullptr);
 }
 
-int32_t RenderDevice::getMemoryType(uint32_t typeBits, VkMemoryPropertyFlags properties)	//, uint32_t& typeIndex)
+int32_t RenderDevice::getMemoryType(uint32_t typeBits, VkMemoryPropertyFlags properties)
 {
 	VkPhysicalDeviceMemoryProperties& deviceMemoryProperties = m_vkPhysicalDeviceMemoryProperties[m_selectedDevice];
 
@@ -1462,7 +1331,7 @@ void RenderDevice::transitionImageLayout(VkCommandBuffer commandBuffer, VkImage 
 	}
 	else if ((oldLayout == VK_IMAGE_LAYOUT_PREINITIALIZED || oldLayout == VK_IMAGE_LAYOUT_UNDEFINED) && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
 	{
-		barrier.srcAccessMask = 0;	// VK_ACCESS_HOST_WRITE_BIT;
+		barrier.srcAccessMask = 0;
 		barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 		sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 		destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;

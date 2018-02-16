@@ -5,6 +5,7 @@ struct Mesh;
 struct GPUMemAllocInfo;
 struct GPUMemoryBlock;
 struct MemorySubBlock;
+struct RenderTarget;
 struct Texture;
 
 const uint32_t kMaxGPUMemoryBlocks = 16;
@@ -151,10 +152,7 @@ struct RenderDevice
 	VkCommandPool						m_vkCommandPool;
 	VkCommandBuffer						*m_vkCommandBuffers;
 
-	VkFormat							m_vkDepthBufferFormat;
-	VkImage								m_vkDepthBufferImage;
-	VkImageView							m_vkDepthBufferView;
-	std::reference_wrapper<GPUMemAllocInfo> m_depthBufferMemAllocInfo;
+	RenderTarget						*m_depthBuffer;
 
 	Mesh								**m_meshes;
 	Texture								**m_textures;
