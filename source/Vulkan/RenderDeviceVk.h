@@ -152,7 +152,8 @@ struct RenderDevice
 	VkCommandPool						m_vkCommandPool;
 	VkCommandBuffer						*m_vkCommandBuffers;
 
-	RenderTarget						*m_depthBuffer;
+	RenderTarget						*m_depthTarget;
+	RenderTarget						*m_aaRenderTarget;
 
 	Mesh								**m_meshes;
 	Texture								**m_textures;

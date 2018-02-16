@@ -78,7 +78,8 @@ RenderDevice::RenderDevice(ScopeStack& scope, uint32_t maxWidth, uint32_t maxHei
 	, m_vkSwapChainImageViews(nullptr)
 	, m_vkSwapChainFramebuffers(nullptr)
 	, m_vkCommandBuffers(nullptr)
-	, m_depthBuffer(nullptr)
+	, m_depthTarget(nullptr)
+	, m_aaRenderTarget(nullptr)
 	, m_numTextures(0)
 	, m_meshes(nullptr)
 	, m_numMeshes(0)
@@ -104,8 +105,8 @@ void RenderDevice::initialize(ScopeStack& scope, GLFWwindow *window)
 	createSemaphores();
 	createSwapChain(scope);	
 	createCommandPool();
-	m_depthBuffer = scope.newObject<RenderTarget>(scope, *this, m_maxWidth, m_maxHeight, VK_FORMAT_D32_SFLOAT, VK_SAMPLE_COUNT_1_BIT);
-//	RenderTarget *renderTarget = scope.newObject<RenderTarget>(scope, *this, m_maxWidth, m_maxHeight, VK_FORMAT_B8G8R8A8_UNORM, VK_SAMPLE_COUNT_4_BIT);
+	m_depthTarget = scope.newObject<RenderTarget>(scope, *this, m_maxWidth, m_maxHeight, VK_FORMAT_D32_SFLOAT, VK_SAMPLE_COUNT_1_BIT);
+	m_aaRenderTarget = scope.newObject<RenderTarget>(scope, *this, m_maxWidth, m_maxHeight, VK_FORMAT_B8G8R8A8_UNORM, VK_SAMPLE_COUNT_4_BIT);
 }
 
 void RenderDevice::finalize(ScopeStack& scope, Mesh **meshes, uint32_t numMeshes, Texture **textures, uint32_t numTextures)
@@ -650,7 +651,7 @@ void RenderDevice::recreateSwapChain(ScopeStack& scope)
 	cleanupSwapChain();
 
 	createSwapChain();
-	m_depthBuffer->resize(m_vkSwapChainExtent.width, m_vkSwapChainExtent.height);
+	m_depthTarget->resize(m_vkSwapChainExtent.width, m_vkSwapChainExtent.height);
 	createRenderPass();
 	createGraphicsPipeline(scope);
 	createFramebuffers();
@@ -677,7 +678,7 @@ void RenderDevice::createRenderPass()
 	colorAttachmentReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
 	VkAttachmentDescription& depthAttachmentDescription = attachments[1];
-	depthAttachmentDescription.format = m_depthBuffer->m_vkFormat;
+	depthAttachmentDescription.format = m_depthTarget->m_vkFormat;
 	depthAttachmentDescription.samples = VK_SAMPLE_COUNT_1_BIT;
 	depthAttachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	depthAttachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -745,7 +746,7 @@ void RenderDevice::createFramebuffers()
 
 	for (uint32_t i = 0; i < m_vkSwapChainImageCount; i++)
 	{
-		VkImageView attachements[] = { m_vkSwapChainImageViews[i], m_depthBuffer->m_vkImageView };
+		VkImageView attachements[] = { m_vkSwapChainImageViews[i], m_depthTarget->m_vkImageView };
 
 		VkFramebufferCreateInfo createInfo = {};
 		createInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -1349,6 +1350,13 @@ void RenderDevice::transitionImageLayout(VkCommandBuffer commandBuffer, VkImage 
 		barrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 		sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 		destinationStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+	}
+	else if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+	{
+		barrier.srcAccessMask = 0;
+		barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+		sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+		destinationStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 	}
 	else
 	{
