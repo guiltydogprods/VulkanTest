@@ -78,7 +78,7 @@ RenderDevice::RenderDevice(ScopeStack& scope, uint32_t maxWidth, uint32_t maxHei
 	, m_vkSwapChainImageViews(nullptr)
 	, m_vkSwapChainFramebuffers(nullptr)
 	, m_vkCommandBuffers(nullptr)
-	, m_depthBuffer(nullptr)
+	, m_depthRenderTarget(nullptr)
 	, m_aaRenderTarget(nullptr)
 	, m_aaDepthRenderTarget(nullptr)
 	, m_numTextures(0)
@@ -106,7 +106,7 @@ void RenderDevice::initialize(ScopeStack& scope, GLFWwindow *window)
 	createSemaphores();
 	createSwapChain(scope);	
 	createCommandPool();
-//	m_depthBuffer = scope.newObject<RenderTarget>(scope, *this, m_maxWidth, m_maxHeight, VK_FORMAT_D32_SFLOAT, VK_SAMPLE_COUNT_1_BIT);
+//	m_depthRendereTarget = scope.newObject<RenderTarget>(scope, *this, m_maxWidth, m_maxHeight, VK_FORMAT_D32_SFLOAT, VK_SAMPLE_COUNT_1_BIT);
 	m_aaRenderTarget = scope.newObject<RenderTarget>(scope, *this, m_maxWidth, m_maxHeight, VK_FORMAT_B8G8R8A8_UNORM, VK_SAMPLE_COUNT_4_BIT);
 	m_aaDepthRenderTarget = scope.newObject<RenderTarget>(scope, *this, m_maxWidth, m_maxHeight, VK_FORMAT_D32_SFLOAT, VK_SAMPLE_COUNT_4_BIT);
 }
