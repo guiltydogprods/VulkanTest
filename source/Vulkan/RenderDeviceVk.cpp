@@ -107,7 +107,7 @@ void RenderDevice::initialize(ScopeStack& scope, GLFWwindow *window)
 	createSwapChain(scope);	
 	createCommandPool();
 //	m_depthRendereTarget = scope.newObject<RenderTarget>(scope, *this, m_maxWidth, m_maxHeight, VK_FORMAT_D32_SFLOAT, VK_SAMPLE_COUNT_1_BIT);
-	m_aaRenderTarget = scope.newObject<RenderTarget>(scope, *this, m_maxWidth, m_maxHeight, VK_FORMAT_B8G8R8A8_UNORM, VK_SAMPLE_COUNT_4_BIT);
+	m_aaRenderTarget = scope.newObject<RenderTarget>(scope, *this, m_maxWidth, m_maxHeight, m_vkSwapChainFormat, VK_SAMPLE_COUNT_4_BIT);
 	m_aaDepthRenderTarget = scope.newObject<RenderTarget>(scope, *this, m_maxWidth, m_maxHeight, VK_FORMAT_D32_SFLOAT, VK_SAMPLE_COUNT_4_BIT);
 }
 
