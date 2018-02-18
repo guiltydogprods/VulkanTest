@@ -87,12 +87,6 @@ RenderTarget::RenderTarget(ScopeStack& scope, RenderDevice& renderDevice, uint32
 		print("failed to create image view image.\n");
 		exit(1);
 	}
-
-	VkCommandBuffer commandBuffer = renderDevice.beginSingleUseCommandBuffer();
-
-	renderDevice.transitionImageLayout(commandBuffer, m_vkImage, createInfo.subresourceRange, VK_IMAGE_LAYOUT_UNDEFINED, defaultLayout);
-
-	renderDevice.endSingleUseCommandBuffer(commandBuffer);
 }
 
 RenderTarget::~RenderTarget()
@@ -188,12 +182,5 @@ bool RenderTarget::resize(uint32_t width, uint32_t height)
 		print("failed to create image view image.\n");
 		exit(1);
 	}
-
-	VkCommandBuffer commandBuffer = m_renderDevice.beginSingleUseCommandBuffer();
-
-	m_renderDevice.transitionImageLayout(commandBuffer, m_vkImage, createInfo.subresourceRange, VK_IMAGE_LAYOUT_UNDEFINED, defaultLayout);
-
-	m_renderDevice.endSingleUseCommandBuffer(commandBuffer);
-
 	return true;
 }
