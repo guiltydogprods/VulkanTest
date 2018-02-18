@@ -1455,13 +1455,18 @@ GPUMemAllocInfo& RenderDevice::GPUMemoryManager::allocate(ScopeStack& scope, VkD
 	return memBlock.allocate(scope, size32, alignment32, optimal);
 }
 
+static uint32_t align(uint32_t size, uint32_t align = 16)
+{
+	return (size + (align - 1)) & ~(align - 1);
+}
+
 GPUMemoryBlock& RenderDevice::GPUMemoryManager::findBlock(ScopeStack& scope, VkDeviceSize size, VkDeviceSize alignment, uint32_t typeIndex)
 {
 	for (uint32_t i = 0; i < m_numBlocks; ++i)
 	{
-		if (m_blocks[i] != nullptr && m_blocks[i]->m_typeIndex == typeIndex) //CLR - Need to check alignment too.
+		if (m_blocks[i] != nullptr && m_blocks[i]->m_typeIndex == typeIndex)
 		{
-			if ((m_blocks[i]->m_size - m_blocks[i]->m_offset) >= size)
+			if ((m_blocks[i]->m_size - align(m_blocks[i]->m_offset, alignment)) >= size)
 				return *m_blocks[i];
 		}
 	}
@@ -1492,11 +1497,6 @@ GPUMemoryBlock::~GPUMemoryBlock()
 {
 	if (m_vkDevice && m_memory)
 		vkFreeMemory(m_vkDevice, m_memory, nullptr);
-}
-
-static uint32_t align(uint32_t size, uint32_t align = 16)
-{
-	return (size + (align - 1)) & ~(align - 1);
 }
 
 GPUMemAllocInfo& GPUMemoryBlock::allocate(ScopeStack& scope, uint32_t size, uint32_t alignment, uint32_t optimal)
