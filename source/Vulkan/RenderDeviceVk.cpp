@@ -1466,10 +1466,12 @@ GPUMemoryBlock& RenderDevice::GPUMemoryManager::findBlock(ScopeStack& scope, VkD
 	{
 		if (m_blocks[i] != nullptr && m_blocks[i]->m_typeIndex == typeIndex)
 		{
-			if ((m_blocks[i]->m_size - align(m_blocks[i]->m_offset, alignment)) >= size)
+			uint32_t alignedOffset = align(m_blocks[i]->m_offset, static_cast<uint32_t>(alignment));
+			if ((m_blocks[i]->m_size - alignedOffset) >= size)
 				return *m_blocks[i];
 		}
 	}
+	FatalAssertMsg((m_numBlocks < kMaxGPUMemoryBlocks), "Out of memory!\n");
 	GPUMemoryBlock *newBlock = m_blocks[m_numBlocks++] = static_cast<GPUMemoryBlock *>(scope.newObject<GPUMemoryBlock>(m_renderDevice.m_vkDevice, kGPUMemoryBlockSize, typeIndex));
 
 	return *newBlock;
