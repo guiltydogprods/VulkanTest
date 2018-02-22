@@ -670,15 +670,11 @@ void RenderDevice::createRenderPass()
 	aaColorAttachmentDescription.format = m_aaRenderTarget->m_vkFormat;
 	aaColorAttachmentDescription.samples = m_aaRenderTarget->m_vkSamples;
 	aaColorAttachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	aaColorAttachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	aaColorAttachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 	aaColorAttachmentDescription.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	aaColorAttachmentDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 	aaColorAttachmentDescription.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	aaColorAttachmentDescription.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-	VkAttachmentReference aaColorAttachmentReference = {};
-	aaColorAttachmentReference.attachment = 0;
-	aaColorAttachmentReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
 	VkAttachmentDescription& colorAttachmentDescription = attachments[1];
 	colorAttachmentDescription.format = m_vkSwapChainFormat;
@@ -690,10 +686,6 @@ void RenderDevice::createRenderPass()
 	colorAttachmentDescription.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	colorAttachmentDescription.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
-	VkAttachmentReference resolveAttachmentReference = {};
-	resolveAttachmentReference.attachment = 1;
-	resolveAttachmentReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
 	VkAttachmentDescription& depthAttachmentDescription = attachments[2];
 	depthAttachmentDescription.format = m_aaDepthRenderTarget->m_vkFormat;
 	depthAttachmentDescription.samples = m_aaDepthRenderTarget->m_vkSamples;
@@ -703,6 +695,14 @@ void RenderDevice::createRenderPass()
 	depthAttachmentDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 	depthAttachmentDescription.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	depthAttachmentDescription.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+	VkAttachmentReference aaColorAttachmentReference = {};
+	aaColorAttachmentReference.attachment = 0;
+	aaColorAttachmentReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+	VkAttachmentReference resolveAttachmentReference = {};
+	resolveAttachmentReference.attachment = 1;
+	resolveAttachmentReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
 	VkAttachmentReference depthAttachmentReference = {};
 	depthAttachmentReference.attachment = 2;
