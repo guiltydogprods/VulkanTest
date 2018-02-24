@@ -5,6 +5,7 @@ struct GPUMemAllocInfo;
 struct RenderTarget
 {
 	RenderTarget(ScopeStack& scope, RenderDevice& renderDevice, uint32_t width, uint32_t height, VkFormat format, VkSampleCountFlagBits samples);
+	RenderTarget(RenderDevice& renderDevice, VkImage image, VkFormat format, VkSampleCountFlagBits samples);
 	~RenderTarget();
 
 	bool resize(uint32_t width, uint32_t height);

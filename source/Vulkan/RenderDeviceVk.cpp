@@ -632,14 +632,21 @@ void RenderDevice::createSwapChain(ScopeStack *scope)
 	VkResult res = vkCreateSwapchainKHR(m_vkDevice, &swapchainCreateInfo, nullptr, &m_vkSwapChain);
 
 	vkGetSwapchainImagesKHR(m_vkDevice, m_vkSwapChain, &m_vkSwapChainImageCount, nullptr);
+	VkImage *swapChainImages = static_cast<VkImage *>(alloca(sizeof(VkImage) * m_vkSwapChainImageCount));
 	if (m_vkSwapChainImages == nullptr && scope != nullptr)
 	{
+		m_swapChainRenderTargets = static_cast<RenderTarget **>(scope->allocate(sizeof(RenderTarget) * m_vkSwapChainImageCount));
+		for (uint32_t i = 0; i < m_vkSwapChainImageCount; ++i)
+		{
+			m_swapChainRenderTargets[i] = scope->newObject<RenderTarget>(*this, swapChainImages[i], m_vkSwapChainFormat, VK_SAMPLE_COUNT_1_BIT);
+		}
 		m_vkSwapChainImages = static_cast<VkImage *>(scope->allocate(sizeof(VkImage) * m_vkSwapChainImageCount));
 		m_vkSwapChainImageViews = static_cast<VkImageView *>(scope->allocate(sizeof(VkImageView) * m_vkSwapChainImageCount));
 		m_vkSwapChainFramebuffers = static_cast<VkFramebuffer *>(scope->allocate(sizeof(VkFramebuffer) * m_vkSwapChainImageCount));
 		m_vkCommandBuffers = static_cast<VkCommandBuffer *>(scope->allocate(sizeof(VkCommandBuffer) * m_vkSwapChainImageCount));
 	}
-	if (vkGetSwapchainImagesKHR(m_vkDevice, m_vkSwapChain, &m_vkSwapChainImageCount, m_vkSwapChainImages) != VK_SUCCESS) 
+	if (vkGetSwapchainImagesKHR(m_vkDevice, m_vkSwapChain, &m_vkSwapChainImageCount, swapChainImages) != VK_SUCCESS)
+//	if (vkGetSwapchainImagesKHR(m_vkDevice, m_vkSwapChain, &m_vkSwapChainImageCount, m_vkSwapChainImages) != VK_SUCCESS)
 	{
 		print("failed to acquire swap chain images\n");
 		exit(EXIT_FAILURE);
