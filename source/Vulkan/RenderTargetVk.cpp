@@ -89,6 +89,17 @@ RenderTarget::RenderTarget(ScopeStack& scope, RenderDevice& renderDevice, uint32
 	}
 }
 
+RenderTarget::RenderTarget(RenderDevice& renderDevice, VkImage image, VkFormat format, VkSampleCountFlagBits samples)
+	: m_renderDevice(renderDevice)
+	, m_vkImage(image)
+	, m_vkImageView(nullptr)
+	, m_memAllocInfo{ _dummyMemAllocInfo }
+	, m_vkFormat(format)
+	, m_vkSamples(samples)
+{
+
+}
+
 RenderTarget::~RenderTarget()
 {
 	vkDestroyImageView(m_renderDevice.m_vkDevice, m_vkImageView, nullptr);
