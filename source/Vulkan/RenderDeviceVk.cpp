@@ -75,6 +75,7 @@ RenderDevice::RenderDevice(ScopeStack& scope, uint32_t maxWidth, uint32_t maxHei
 	, m_vkVertexAttributeDescriptions(nullptr)
 	, m_vkSwapChainImageCount(0)
 	, m_vkSwapChainImages(nullptr)
+	, m_swapChainRenderTargets(nullptr)
 	, m_vkSwapChainImageViews(nullptr)
 	, m_vkSwapChainFramebuffers(nullptr)
 	, m_vkCommandBuffers(nullptr)
@@ -131,7 +132,7 @@ void RenderDevice::cleanupSwapChain()
 	for (uint32_t i = 0; i < m_vkSwapChainImageCount; ++i)
 	{
 		vkDestroyFramebuffer(m_vkDevice, m_vkSwapChainFramebuffers[i], nullptr);
-		vkDestroyImageView(m_vkDevice, m_vkSwapChainImageViews[i], nullptr);
+//		vkDestroyImageView(m_vkDevice, m_vkSwapChainImageViews[i], nullptr);
 	}
 
 	vkDestroyPipeline(m_vkDevice, m_vkGraphicsPipeline, nullptr);
@@ -633,7 +634,13 @@ void RenderDevice::createSwapChain(ScopeStack *scope)
 
 	vkGetSwapchainImagesKHR(m_vkDevice, m_vkSwapChain, &m_vkSwapChainImageCount, nullptr);
 	VkImage *swapChainImages = static_cast<VkImage *>(alloca(sizeof(VkImage) * m_vkSwapChainImageCount));
-	if (m_vkSwapChainImages == nullptr && scope != nullptr)
+	if (vkGetSwapchainImagesKHR(m_vkDevice, m_vkSwapChain, &m_vkSwapChainImageCount, swapChainImages) != VK_SUCCESS)
+	{
+		print("failed to acquire swap chain images\n");
+		exit(EXIT_FAILURE);
+	}
+
+	if (m_swapChainRenderTargets == nullptr && scope != nullptr)
 	{
 		m_swapChainRenderTargets = static_cast<RenderTarget **>(scope->allocate(sizeof(RenderTarget) * m_vkSwapChainImageCount));
 		for (uint32_t i = 0; i < m_vkSwapChainImageCount; ++i)
@@ -644,12 +651,6 @@ void RenderDevice::createSwapChain(ScopeStack *scope)
 		m_vkSwapChainImageViews = static_cast<VkImageView *>(scope->allocate(sizeof(VkImageView) * m_vkSwapChainImageCount));
 		m_vkSwapChainFramebuffers = static_cast<VkFramebuffer *>(scope->allocate(sizeof(VkFramebuffer) * m_vkSwapChainImageCount));
 		m_vkCommandBuffers = static_cast<VkCommandBuffer *>(scope->allocate(sizeof(VkCommandBuffer) * m_vkSwapChainImageCount));
-	}
-	if (vkGetSwapchainImagesKHR(m_vkDevice, m_vkSwapChain, &m_vkSwapChainImageCount, swapChainImages) != VK_SUCCESS)
-//	if (vkGetSwapchainImagesKHR(m_vkDevice, m_vkSwapChain, &m_vkSwapChainImageCount, m_vkSwapChainImages) != VK_SUCCESS)
-	{
-		print("failed to acquire swap chain images\n");
-		exit(EXIT_FAILURE);
 	}
 }
 
@@ -765,6 +766,7 @@ void RenderDevice::createRenderPass()
 void RenderDevice::createFramebuffers()
 {
 	// Create an image view for every image in the swap chain
+/*
 	for (uint32_t i = 0; i < m_vkSwapChainImageCount; i++)
 	{
 		VkImageViewCreateInfo createInfo = {};
@@ -790,10 +792,10 @@ void RenderDevice::createFramebuffers()
 	}
 
 	print("created image views for swap chain images\n");;
-
+*/
 	for (uint32_t i = 0; i < m_vkSwapChainImageCount; i++)
 	{
-		VkImageView attachements[] = { m_aaRenderTarget->m_vkImageView, m_vkSwapChainImageViews[i], m_aaDepthRenderTarget->m_vkImageView };
+		VkImageView attachements[] = { m_aaRenderTarget->m_vkImageView, m_swapChainRenderTargets[i]->m_vkImageView, m_aaDepthRenderTarget->m_vkImageView };
 
 		VkFramebufferCreateInfo createInfo = {};
 		createInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -1186,7 +1188,7 @@ void RenderDevice::createCommandBuffers(Mesh **meshes, uint32_t numMeshes)
 			presentToDrawBarrier.srcQueueFamilyIndex = m_vkPresentQueueFamilyIndex;
 			presentToDrawBarrier.dstQueueFamilyIndex = m_vkGraphicsQueueFamilyIndex;
 		}
-		presentToDrawBarrier.image = m_vkSwapChainImages[i];
+		presentToDrawBarrier.image = m_swapChainRenderTargets[i]->m_vkImage;
 		presentToDrawBarrier.subresourceRange = subResourceRange;
 
 		vkCmdPipelineBarrier(m_vkCommandBuffers[i], VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, nullptr, 0, nullptr, 1, &presentToDrawBarrier);
