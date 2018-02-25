@@ -9,6 +9,7 @@ RenderTarget::RenderTarget(ScopeStack& scope, RenderDevice& renderDevice, uint32
 	, m_memAllocInfo{ _dummyMemAllocInfo }
 	, m_vkFormat(format)
 	, m_vkSamples(samples)
+	, m_flags(0)
 {
 	VkFormatProperties properties = {};
 	vkGetPhysicalDeviceFormatProperties(renderDevice.m_vkPhysicalDevices[renderDevice.m_selectedDevice], format, &properties);
@@ -96,6 +97,7 @@ RenderTarget::RenderTarget(RenderDevice& renderDevice, VkImage image, VkFormat f
 	, m_memAllocInfo{ _dummyMemAllocInfo }
 	, m_vkFormat(format)
 	, m_vkSamples(samples)
+	, m_flags(kRTFlagsExternallyAllocated)
 {
 	VkFormatProperties properties = {};
 	vkGetPhysicalDeviceFormatProperties(renderDevice.m_vkPhysicalDevices[renderDevice.m_selectedDevice], format, &properties);
@@ -144,7 +146,8 @@ RenderTarget::RenderTarget(RenderDevice& renderDevice, VkImage image, VkFormat f
 RenderTarget::~RenderTarget()
 {
 	vkDestroyImageView(m_renderDevice.m_vkDevice, m_vkImageView, nullptr);
-	vkDestroyImage(m_renderDevice.m_vkDevice, m_vkImage, nullptr);
+	if (!(m_flags & kRTFlagsExternallyAllocated))
+		vkDestroyImage(m_renderDevice.m_vkDevice, m_vkImage, nullptr);
 }
 
 bool RenderTarget::resize(uint32_t width, uint32_t height)

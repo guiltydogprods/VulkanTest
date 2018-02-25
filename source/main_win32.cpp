@@ -42,7 +42,8 @@ int main(int argc, char *argv[])
 	{
 		ScopeStack systemScope(allocator, "System");
 
-		RenderDevice *pRenderDevice = systemScope.newObject<RenderDevice>(systemScope, static_cast<uint32_t>(primaryScreenMode->width), static_cast<uint32_t>(primaryScreenMode->height), window);
+//		RenderDevice *pRenderDevice = systemScope.newObject<RenderDevice>(systemScope, static_cast<uint32_t>(primaryScreenMode->width), static_cast<uint32_t>(primaryScreenMode->height), window);
+		RenderDevice *pRenderDevice = systemScope.newObject<RenderDevice>(systemScope, static_cast<uint32_t>(startUpScreenWidth), static_cast<uint32_t>(startUpScreenHeight), window);
 #if defined(WIN32)
 		app->setGLFWwindow(window);
 #endif
@@ -69,7 +70,7 @@ int main(int argc, char *argv[])
 			glfwPollEvents();
 			if (app->getWasResized())
 			{
-				pRenderDevice->recreateSwapChain(frameScope);
+//				pRenderDevice->recreateSwapChain(frameScope);
 				app->clearWasResized();
 			}
 		}

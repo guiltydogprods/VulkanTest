@@ -153,7 +153,7 @@ void RenderDevice::cleanup()
 	for (uint32_t i = 0; i < m_vkSwapChainImageCount; ++i)
 	{
 		vkDestroyFramebuffer(m_vkDevice, m_vkSwapChainFramebuffers[i], nullptr);
-		vkDestroyImageView(m_vkDevice, m_vkSwapChainImageViews[i], nullptr);
+//		vkDestroyImageView(m_vkDevice, m_vkSwapChainImageViews[i], nullptr);
 	}
 
 	vkDestroySwapchainKHR(m_vkDevice, m_vkSwapChain, nullptr);
