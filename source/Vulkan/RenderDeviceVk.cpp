@@ -74,8 +74,7 @@ RenderDevice::RenderDevice(ScopeStack& scope, uint32_t maxWidth, uint32_t maxHei
 	, m_vkVertexAttributeDescriptionCount(0)
 	, m_vkVertexAttributeDescriptions(nullptr)
 	, m_vkSwapChainImageCount(0)
-	, m_vkSwapChainImages(nullptr)
-	, m_vkSwapChainImageViews(nullptr)
+	, m_swapChainRenderTargets(nullptr)
 	, m_vkSwapChainFramebuffers(nullptr)
 	, m_vkCommandBuffers(nullptr)
 	, m_depthRenderTarget(nullptr)
@@ -129,10 +128,7 @@ void RenderDevice::cleanupSwapChain()
 	vkFreeCommandBuffers(m_vkDevice, m_vkCommandPool, m_vkSwapChainImageCount, m_vkCommandBuffers);
 
 	for (uint32_t i = 0; i < m_vkSwapChainImageCount; ++i)
-	{
 		vkDestroyFramebuffer(m_vkDevice, m_vkSwapChainFramebuffers[i], nullptr);
-		vkDestroyImageView(m_vkDevice, m_vkSwapChainImageViews[i], nullptr);
-	}
 
 	vkDestroyPipeline(m_vkDevice, m_vkGraphicsPipeline, nullptr);
 	vkDestroyDescriptorSetLayout(m_vkDevice, m_vkDescriptorSetLayout, nullptr);
@@ -149,11 +145,9 @@ void RenderDevice::cleanup()
 	vkDestroyDescriptorPool(m_vkDevice, m_vkDescriptorPool, nullptr);
 	vkDestroyPipeline(m_vkDevice, m_vkGraphicsPipeline, nullptr);
 	vkDestroyRenderPass(m_vkDevice, m_vkRenderPass, nullptr);
+
 	for (uint32_t i = 0; i < m_vkSwapChainImageCount; ++i)
-	{
 		vkDestroyFramebuffer(m_vkDevice, m_vkSwapChainFramebuffers[i], nullptr);
-		vkDestroyImageView(m_vkDevice, m_vkSwapChainImageViews[i], nullptr);
-	}
 
 	vkDestroySwapchainKHR(m_vkDevice, m_vkSwapChain, nullptr);
 	vkDestroyCommandPool(m_vkDevice, m_vkCommandPool, nullptr);
@@ -632,17 +626,25 @@ void RenderDevice::createSwapChain(ScopeStack *scope)
 	VkResult res = vkCreateSwapchainKHR(m_vkDevice, &swapchainCreateInfo, nullptr, &m_vkSwapChain);
 
 	vkGetSwapchainImagesKHR(m_vkDevice, m_vkSwapChain, &m_vkSwapChainImageCount, nullptr);
-	if (m_vkSwapChainImages == nullptr && scope != nullptr)
-	{
-		m_vkSwapChainImages = static_cast<VkImage *>(scope->allocate(sizeof(VkImage) * m_vkSwapChainImageCount));
-		m_vkSwapChainImageViews = static_cast<VkImageView *>(scope->allocate(sizeof(VkImageView) * m_vkSwapChainImageCount));
-		m_vkSwapChainFramebuffers = static_cast<VkFramebuffer *>(scope->allocate(sizeof(VkFramebuffer) * m_vkSwapChainImageCount));
-		m_vkCommandBuffers = static_cast<VkCommandBuffer *>(scope->allocate(sizeof(VkCommandBuffer) * m_vkSwapChainImageCount));
-	}
-	if (vkGetSwapchainImagesKHR(m_vkDevice, m_vkSwapChain, &m_vkSwapChainImageCount, m_vkSwapChainImages) != VK_SUCCESS) 
+	VkImage *swapChainImages = static_cast<VkImage *>(alloca(sizeof(VkImage) * m_vkSwapChainImageCount));
+	if (vkGetSwapchainImagesKHR(m_vkDevice, m_vkSwapChain, &m_vkSwapChainImageCount, swapChainImages) != VK_SUCCESS)
 	{
 		print("failed to acquire swap chain images\n");
 		exit(EXIT_FAILURE);
+	}
+
+	if (m_swapChainRenderTargets == nullptr && scope != nullptr)
+	{
+		m_swapChainRenderTargets = static_cast<RenderTarget **>(scope->allocate(sizeof(RenderTarget) * m_vkSwapChainImageCount));
+		for (uint32_t i = 0; i < m_vkSwapChainImageCount; ++i)
+			m_swapChainRenderTargets[i] = scope->newObject<RenderTarget>(*this, swapChainImages[i], m_vkSwapChainFormat, VK_SAMPLE_COUNT_1_BIT);
+		m_vkSwapChainFramebuffers = static_cast<VkFramebuffer *>(scope->allocate(sizeof(VkFramebuffer) * m_vkSwapChainImageCount));
+		m_vkCommandBuffers = static_cast<VkCommandBuffer *>(scope->allocate(sizeof(VkCommandBuffer) * m_vkSwapChainImageCount));
+	}
+	else
+	{
+		for (uint32_t i = 0; i < m_vkSwapChainImageCount; ++i)
+			m_swapChainRenderTargets[i]->recreate(swapChainImages[i]);
 	}
 }
 
@@ -757,36 +759,9 @@ void RenderDevice::createRenderPass()
 
 void RenderDevice::createFramebuffers()
 {
-	// Create an image view for every image in the swap chain
 	for (uint32_t i = 0; i < m_vkSwapChainImageCount; i++)
 	{
-		VkImageViewCreateInfo createInfo = {};
-		createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-		createInfo.image = m_vkSwapChainImages[i];
-		createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-		createInfo.format = m_vkSwapChainFormat;
-		createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-		createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-		createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-		createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-		createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		createInfo.subresourceRange.baseMipLevel = 0;
-		createInfo.subresourceRange.levelCount = 1;
-		createInfo.subresourceRange.baseArrayLayer = 0;
-		createInfo.subresourceRange.layerCount = 1;
-
-		if (vkCreateImageView(m_vkDevice, &createInfo, nullptr, &m_vkSwapChainImageViews[i]) != VK_SUCCESS)
-		{
-			print("failed to create image view for swap chain image #%zd\n", i);
-			exit(1);
-		}
-	}
-
-	print("created image views for swap chain images\n");;
-
-	for (uint32_t i = 0; i < m_vkSwapChainImageCount; i++)
-	{
-		VkImageView attachements[] = { m_aaRenderTarget->m_vkImageView, m_vkSwapChainImageViews[i], m_aaDepthRenderTarget->m_vkImageView };
+		VkImageView attachements[] = { m_aaRenderTarget->m_vkImageView, m_swapChainRenderTargets[i]->m_vkImageView, m_aaDepthRenderTarget->m_vkImageView };
 
 		VkFramebufferCreateInfo createInfo = {};
 		createInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -803,7 +778,6 @@ void RenderDevice::createFramebuffers()
 			exit(1);
 		}
 	}
-
 	print("created framebuffers for swap chain image views.\n");
 }
 
@@ -1179,7 +1153,7 @@ void RenderDevice::createCommandBuffers(Mesh **meshes, uint32_t numMeshes)
 			presentToDrawBarrier.srcQueueFamilyIndex = m_vkPresentQueueFamilyIndex;
 			presentToDrawBarrier.dstQueueFamilyIndex = m_vkGraphicsQueueFamilyIndex;
 		}
-		presentToDrawBarrier.image = m_vkSwapChainImages[i];
+		presentToDrawBarrier.image = m_swapChainRenderTargets[i]->m_vkImage;
 		presentToDrawBarrier.subresourceRange = subResourceRange;
 
 		vkCmdPipelineBarrier(m_vkCommandBuffers[i], VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, nullptr, 0, nullptr, 1, &presentToDrawBarrier);
@@ -1227,7 +1201,7 @@ void RenderDevice::createCommandBuffers(Mesh **meshes, uint32_t numMeshes)
 			drawToPresentBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 			drawToPresentBarrier.srcQueueFamilyIndex = m_vkGraphicsQueueFamilyIndex;
 			drawToPresentBarrier.dstQueueFamilyIndex = m_vkPresentQueueFamilyIndex;
-			drawToPresentBarrier.image = m_vkSwapChainImages[i];
+			drawToPresentBarrier.image = m_swapChainRenderTargets[i]->m_vkImage;
 			drawToPresentBarrier.subresourceRange = subResourceRange;
 
 			vkCmdPipelineBarrier(m_vkCommandBuffers[i], VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, 1, &drawToPresentBarrier);

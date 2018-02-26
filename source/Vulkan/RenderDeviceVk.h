@@ -136,8 +136,7 @@ struct RenderDevice
 	VkFormat							m_vkSwapChainFormat;
 	VkSwapchainKHR						m_vkSwapChain;
 	uint32_t							m_vkSwapChainImageCount;
-	VkImage								*m_vkSwapChainImages;
-	VkImageView							*m_vkSwapChainImageViews;
+	RenderTarget						**m_swapChainRenderTargets;
 	VkFramebuffer						*m_vkSwapChainFramebuffers;
 
 	VkRenderPass						m_vkRenderPass;
