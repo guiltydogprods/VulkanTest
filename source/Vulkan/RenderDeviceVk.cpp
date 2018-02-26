@@ -130,10 +130,7 @@ void RenderDevice::cleanupSwapChain()
 	vkFreeCommandBuffers(m_vkDevice, m_vkCommandPool, m_vkSwapChainImageCount, m_vkCommandBuffers);
 
 	for (uint32_t i = 0; i < m_vkSwapChainImageCount; ++i)
-	{
 		vkDestroyFramebuffer(m_vkDevice, m_vkSwapChainFramebuffers[i], nullptr);
-//		vkDestroyImageView(m_vkDevice, m_vkSwapChainImageViews[i], nullptr);
-	}
 
 	vkDestroyPipeline(m_vkDevice, m_vkGraphicsPipeline, nullptr);
 	vkDestroyDescriptorSetLayout(m_vkDevice, m_vkDescriptorSetLayout, nullptr);
@@ -150,11 +147,9 @@ void RenderDevice::cleanup()
 	vkDestroyDescriptorPool(m_vkDevice, m_vkDescriptorPool, nullptr);
 	vkDestroyPipeline(m_vkDevice, m_vkGraphicsPipeline, nullptr);
 	vkDestroyRenderPass(m_vkDevice, m_vkRenderPass, nullptr);
+
 	for (uint32_t i = 0; i < m_vkSwapChainImageCount; ++i)
-	{
 		vkDestroyFramebuffer(m_vkDevice, m_vkSwapChainFramebuffers[i], nullptr);
-//		vkDestroyImageView(m_vkDevice, m_vkSwapChainImageViews[i], nullptr);
-	}
 
 	vkDestroySwapchainKHR(m_vkDevice, m_vkSwapChain, nullptr);
 	vkDestroyCommandPool(m_vkDevice, m_vkCommandPool, nullptr);
@@ -644,13 +639,16 @@ void RenderDevice::createSwapChain(ScopeStack *scope)
 	{
 		m_swapChainRenderTargets = static_cast<RenderTarget **>(scope->allocate(sizeof(RenderTarget) * m_vkSwapChainImageCount));
 		for (uint32_t i = 0; i < m_vkSwapChainImageCount; ++i)
-		{
 			m_swapChainRenderTargets[i] = scope->newObject<RenderTarget>(*this, swapChainImages[i], m_vkSwapChainFormat, VK_SAMPLE_COUNT_1_BIT);
-		}
 		m_vkSwapChainImages = static_cast<VkImage *>(scope->allocate(sizeof(VkImage) * m_vkSwapChainImageCount));
 		m_vkSwapChainImageViews = static_cast<VkImageView *>(scope->allocate(sizeof(VkImageView) * m_vkSwapChainImageCount));
 		m_vkSwapChainFramebuffers = static_cast<VkFramebuffer *>(scope->allocate(sizeof(VkFramebuffer) * m_vkSwapChainImageCount));
 		m_vkCommandBuffers = static_cast<VkCommandBuffer *>(scope->allocate(sizeof(VkCommandBuffer) * m_vkSwapChainImageCount));
+	}
+	else
+	{
+		for (uint32_t i = 0; i < m_vkSwapChainImageCount; ++i)
+			m_swapChainRenderTargets[i]->recreate(swapChainImages[i]);
 	}
 }
 
@@ -765,34 +763,6 @@ void RenderDevice::createRenderPass()
 
 void RenderDevice::createFramebuffers()
 {
-	// Create an image view for every image in the swap chain
-/*
-	for (uint32_t i = 0; i < m_vkSwapChainImageCount; i++)
-	{
-		VkImageViewCreateInfo createInfo = {};
-		createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-		createInfo.image = m_vkSwapChainImages[i];
-		createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-		createInfo.format = m_vkSwapChainFormat;
-		createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-		createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-		createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-		createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-		createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		createInfo.subresourceRange.baseMipLevel = 0;
-		createInfo.subresourceRange.levelCount = 1;
-		createInfo.subresourceRange.baseArrayLayer = 0;
-		createInfo.subresourceRange.layerCount = 1;
-
-		if (vkCreateImageView(m_vkDevice, &createInfo, nullptr, &m_vkSwapChainImageViews[i]) != VK_SUCCESS)
-		{
-			print("failed to create image view for swap chain image #%zd\n", i);
-			exit(1);
-		}
-	}
-
-	print("created image views for swap chain images\n");;
-*/
 	for (uint32_t i = 0; i < m_vkSwapChainImageCount; i++)
 	{
 		VkImageView attachements[] = { m_aaRenderTarget->m_vkImageView, m_swapChainRenderTargets[i]->m_vkImageView, m_aaDepthRenderTarget->m_vkImageView };
@@ -812,7 +782,6 @@ void RenderDevice::createFramebuffers()
 			exit(1);
 		}
 	}
-
 	print("created framebuffers for swap chain image views.\n");
 }
 

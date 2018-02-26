@@ -239,3 +239,58 @@ bool RenderTarget::resize(uint32_t width, uint32_t height)
 	}
 	return true;
 }
+
+bool RenderTarget::recreate(VkImage image)
+{
+	AssertMsg((m_flags & kRTFlagsExternallyAllocated), "RenderTarget must have been constructed from externally allocate VkImage.\n");
+	m_vkImage = image;
+
+	VkFormatProperties properties = {};
+	vkGetPhysicalDeviceFormatProperties(m_renderDevice.m_vkPhysicalDevices[m_renderDevice.m_selectedDevice], m_vkFormat, &properties);
+
+	bool bColorAttachment = properties.optimalTilingFeatures & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
+	bool bDepthAttachment = properties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
+	bool bSampledImage = properties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT;
+	VkImageUsageFlags usage = bSampledImage ? VK_IMAGE_USAGE_SAMPLED_BIT : 0;
+	VkImageLayout defaultLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	VkImageAspectFlags aspectFlags = 0;
+	if (bColorAttachment)
+	{
+		usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+		defaultLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		aspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
+	}
+	else if (bDepthAttachment)
+	{
+		usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+		defaultLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+		aspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT;
+	}
+
+	if (m_vkImageView)
+	{
+		vkDestroyImageView(m_renderDevice.m_vkDevice, m_vkImageView, nullptr);
+		m_vkImageView = nullptr;
+	}
+	VkImageViewCreateInfo createInfo = {};
+	createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	createInfo.image = m_vkImage;
+	createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	createInfo.format = m_vkFormat;
+	createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+	createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+	createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+	createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+	createInfo.subresourceRange.aspectMask = aspectFlags;
+	createInfo.subresourceRange.baseMipLevel = 0;
+	createInfo.subresourceRange.levelCount = 1;
+	createInfo.subresourceRange.baseArrayLayer = 0;
+	createInfo.subresourceRange.layerCount = 1;
+
+	if (vkCreateImageView(m_renderDevice.m_vkDevice, &createInfo, nullptr, &m_vkImageView) != VK_SUCCESS)
+	{
+		print("failed to create image view image.\n");
+		exit(1);
+	}
+	return true;
+}
