@@ -654,6 +654,7 @@ void RenderDevice::recreateSwapChain(ScopeStack& scope)
 
 	createSwapChain();
 //	m_depthTarget->resize(m_vkSwapChainExtent.width, m_vkSwapChainExtent.height);
+	m_aaRenderTarget->resize(m_vkSwapChainExtent.width, m_vkSwapChainExtent.height);
 	m_aaDepthRenderTarget->resize(m_vkSwapChainExtent.width, m_vkSwapChainExtent.height);
 	createRenderPass();
 	createGraphicsPipeline(scope);
