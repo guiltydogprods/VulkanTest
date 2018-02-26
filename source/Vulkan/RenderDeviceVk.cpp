@@ -74,9 +74,7 @@ RenderDevice::RenderDevice(ScopeStack& scope, uint32_t maxWidth, uint32_t maxHei
 	, m_vkVertexAttributeDescriptionCount(0)
 	, m_vkVertexAttributeDescriptions(nullptr)
 	, m_vkSwapChainImageCount(0)
-	, m_vkSwapChainImages(nullptr)
 	, m_swapChainRenderTargets(nullptr)
-	, m_vkSwapChainImageViews(nullptr)
 	, m_vkSwapChainFramebuffers(nullptr)
 	, m_vkCommandBuffers(nullptr)
 	, m_depthRenderTarget(nullptr)
@@ -640,8 +638,6 @@ void RenderDevice::createSwapChain(ScopeStack *scope)
 		m_swapChainRenderTargets = static_cast<RenderTarget **>(scope->allocate(sizeof(RenderTarget) * m_vkSwapChainImageCount));
 		for (uint32_t i = 0; i < m_vkSwapChainImageCount; ++i)
 			m_swapChainRenderTargets[i] = scope->newObject<RenderTarget>(*this, swapChainImages[i], m_vkSwapChainFormat, VK_SAMPLE_COUNT_1_BIT);
-		m_vkSwapChainImages = static_cast<VkImage *>(scope->allocate(sizeof(VkImage) * m_vkSwapChainImageCount));
-		m_vkSwapChainImageViews = static_cast<VkImageView *>(scope->allocate(sizeof(VkImageView) * m_vkSwapChainImageCount));
 		m_vkSwapChainFramebuffers = static_cast<VkFramebuffer *>(scope->allocate(sizeof(VkFramebuffer) * m_vkSwapChainImageCount));
 		m_vkCommandBuffers = static_cast<VkCommandBuffer *>(scope->allocate(sizeof(VkCommandBuffer) * m_vkSwapChainImageCount));
 	}
@@ -1205,7 +1201,7 @@ void RenderDevice::createCommandBuffers(Mesh **meshes, uint32_t numMeshes)
 			drawToPresentBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 			drawToPresentBarrier.srcQueueFamilyIndex = m_vkGraphicsQueueFamilyIndex;
 			drawToPresentBarrier.dstQueueFamilyIndex = m_vkPresentQueueFamilyIndex;
-			drawToPresentBarrier.image = m_vkSwapChainImages[i];
+			drawToPresentBarrier.image = m_swapChainRenderTargets[i]->m_vkImage;
 			drawToPresentBarrier.subresourceRange = subResourceRange;
 
 			vkCmdPipelineBarrier(m_vkCommandBuffers[i], VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, 1, &drawToPresentBarrier);

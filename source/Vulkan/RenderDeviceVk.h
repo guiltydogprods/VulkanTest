@@ -137,8 +137,6 @@ struct RenderDevice
 	VkSwapchainKHR						m_vkSwapChain;
 	uint32_t							m_vkSwapChainImageCount;
 	RenderTarget						**m_swapChainRenderTargets;
-	VkImage								*m_vkSwapChainImages;
-	VkImageView							*m_vkSwapChainImageViews;
 	VkFramebuffer						*m_vkSwapChainFramebuffers;
 
 	VkRenderPass						m_vkRenderPass;
