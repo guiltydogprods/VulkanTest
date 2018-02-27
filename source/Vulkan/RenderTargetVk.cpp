@@ -14,22 +14,17 @@ RenderTarget::RenderTarget(ScopeStack& scope, RenderDevice& renderDevice, uint32
 	VkFormatProperties properties = {};
 	vkGetPhysicalDeviceFormatProperties(renderDevice.m_vkPhysicalDevices[renderDevice.m_selectedDevice], format, &properties);
 
-	bool bColorAttachment = properties.optimalTilingFeatures & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
-	bool bDepthAttachment = properties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
 	bool bSampledImage = properties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT;
 	VkImageUsageFlags usage = bSampledImage ? VK_IMAGE_USAGE_SAMPLED_BIT : 0;	
-	VkImageLayout defaultLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	VkImageAspectFlags aspectFlags = 0;
-	if (bColorAttachment)
+	if (!isDepthFormat(format))
 	{
 		usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-		defaultLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 		aspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
 	}
-	else if (bDepthAttachment)
+	else
 	{
 		usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-		defaultLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 		aspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT;
 	}
 
@@ -102,22 +97,17 @@ RenderTarget::RenderTarget(RenderDevice& renderDevice, VkImage image, VkFormat f
 	VkFormatProperties properties = {};
 	vkGetPhysicalDeviceFormatProperties(renderDevice.m_vkPhysicalDevices[renderDevice.m_selectedDevice], format, &properties);
 
-	bool bColorAttachment = properties.optimalTilingFeatures & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
-	bool bDepthAttachment = properties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
 	bool bSampledImage = properties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT;
 	VkImageUsageFlags usage = bSampledImage ? VK_IMAGE_USAGE_SAMPLED_BIT : 0;
-	VkImageLayout defaultLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	VkImageAspectFlags aspectFlags = 0;
-	if (bColorAttachment)
+	if (!isDepthFormat(format))
 	{
 		usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-		defaultLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 		aspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
 	}
-	else if (bDepthAttachment)
+	else
 	{
 		usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-		defaultLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 		aspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT;
 	}
 
@@ -150,6 +140,22 @@ RenderTarget::~RenderTarget()
 		vkDestroyImage(m_renderDevice.m_vkDevice, m_vkImage, nullptr);
 }
 
+bool RenderTarget::isDepthFormat(VkFormat format)
+{
+	switch (format)
+	{
+	case VK_FORMAT_D16_UNORM:
+	case VK_FORMAT_X8_D24_UNORM_PACK32:
+	case VK_FORMAT_D32_SFLOAT:
+	case VK_FORMAT_D16_UNORM_S8_UINT:
+	case VK_FORMAT_D24_UNORM_S8_UINT:
+	case VK_FORMAT_D32_SFLOAT_S8_UINT:
+		return true;
+	default:
+		return false;
+	}
+}
+
 bool RenderTarget::resize(uint32_t width, uint32_t height)
 {
 	if (m_vkImageView)
@@ -167,18 +173,15 @@ bool RenderTarget::resize(uint32_t width, uint32_t height)
 	bool bDepthAttachment = properties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
 	bool bSampledImage = properties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT;
 	VkImageUsageFlags usage = bSampledImage ? VK_IMAGE_USAGE_SAMPLED_BIT : 0;
-	VkImageLayout defaultLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	VkImageAspectFlags aspectFlags = 0;
-	if (bColorAttachment)
+	if (!isDepthFormat(m_vkFormat))
 	{
 		usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-		defaultLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 		aspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
 	}
-	else if (bDepthAttachment)
+	else
 	{
 		usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-		defaultLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 		aspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT;
 	}
 
@@ -248,22 +251,17 @@ bool RenderTarget::recreate(VkImage image)
 	VkFormatProperties properties = {};
 	vkGetPhysicalDeviceFormatProperties(m_renderDevice.m_vkPhysicalDevices[m_renderDevice.m_selectedDevice], m_vkFormat, &properties);
 
-	bool bColorAttachment = properties.optimalTilingFeatures & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
-	bool bDepthAttachment = properties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
 	bool bSampledImage = properties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT;
 	VkImageUsageFlags usage = bSampledImage ? VK_IMAGE_USAGE_SAMPLED_BIT : 0;
-	VkImageLayout defaultLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	VkImageAspectFlags aspectFlags = 0;
-	if (bColorAttachment)
+	if (!isDepthFormat(m_vkFormat))
 	{
 		usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-		defaultLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 		aspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
 	}
-	else if (bDepthAttachment)
+	else
 	{
 		usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-		defaultLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 		aspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT;
 	}
 

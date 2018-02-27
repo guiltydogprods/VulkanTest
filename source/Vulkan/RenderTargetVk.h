@@ -15,6 +15,7 @@ struct RenderTarget
 	RenderTarget(RenderDevice& renderDevice, VkImage image, VkFormat format, VkSampleCountFlagBits samples);
 	~RenderTarget();
 
+	bool isDepthFormat(VkFormat format);
 	bool resize(uint32_t width, uint32_t height);
 
 	RenderDevice&	m_renderDevice;
