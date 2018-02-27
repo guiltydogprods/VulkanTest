@@ -683,39 +683,39 @@ void RenderDevice::createRenderPass()
 	aaColorAttachmentReference.attachment = 0;
 	aaColorAttachmentReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-	VkAttachmentDescription& colorAttachmentDescription = attachments[1];
-	colorAttachmentDescription.format = m_vkSwapChainFormat;
-	colorAttachmentDescription.samples = VK_SAMPLE_COUNT_1_BIT;
-	colorAttachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	colorAttachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-	colorAttachmentDescription.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	colorAttachmentDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	colorAttachmentDescription.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	colorAttachmentDescription.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	VkAttachmentDescription& aaDepthAttachmentDescription = attachments[1];
+	aaDepthAttachmentDescription.format = m_aaDepthRenderTarget->m_vkFormat;
+	aaDepthAttachmentDescription.samples = m_aaDepthRenderTarget->m_vkSamples;
+	aaDepthAttachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	aaDepthAttachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	aaDepthAttachmentDescription.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	aaDepthAttachmentDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	aaDepthAttachmentDescription.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	aaDepthAttachmentDescription.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+	VkAttachmentReference aaDepthAttachmentReference = {};
+	aaDepthAttachmentReference.attachment = 1;
+	aaDepthAttachmentReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+	VkAttachmentDescription& resolveAttachmentDescription = attachments[2];
+	resolveAttachmentDescription.format = m_vkSwapChainFormat;
+	resolveAttachmentDescription.samples = VK_SAMPLE_COUNT_1_BIT;
+	resolveAttachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	resolveAttachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	resolveAttachmentDescription.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	resolveAttachmentDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	resolveAttachmentDescription.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	resolveAttachmentDescription.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
 	VkAttachmentReference resolveAttachmentReference = {};
-	resolveAttachmentReference.attachment = 1;
+	resolveAttachmentReference.attachment = 2;
 	resolveAttachmentReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-	VkAttachmentDescription& depthAttachmentDescription = attachments[2];
-	depthAttachmentDescription.format = m_aaDepthRenderTarget->m_vkFormat;
-	depthAttachmentDescription.samples = m_aaDepthRenderTarget->m_vkSamples;
-	depthAttachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	depthAttachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	depthAttachmentDescription.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	depthAttachmentDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	depthAttachmentDescription.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	depthAttachmentDescription.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-	VkAttachmentReference depthAttachmentReference = {};
-	depthAttachmentReference.attachment = 2;
-	depthAttachmentReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
 	VkSubpassDescription subPassDescription = {};
 	subPassDescription.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 	subPassDescription.colorAttachmentCount = 1;
 	subPassDescription.pColorAttachments = &aaColorAttachmentReference;
-	subPassDescription.pDepthStencilAttachment = &depthAttachmentReference;
+	subPassDescription.pDepthStencilAttachment = &aaDepthAttachmentReference;
 	subPassDescription.pResolveAttachments = &resolveAttachmentReference;
 
 	VkSubpassDependency dependencies[2];
@@ -761,7 +761,7 @@ void RenderDevice::createFramebuffers()
 {
 	for (uint32_t i = 0; i < m_vkSwapChainImageCount; i++)
 	{
-		VkImageView attachements[] = { m_aaRenderTarget->m_vkImageView, m_swapChainRenderTargets[i]->m_vkImageView, m_aaDepthRenderTarget->m_vkImageView };
+		VkImageView attachements[] = { m_aaRenderTarget->m_vkImageView, m_aaDepthRenderTarget->m_vkImageView, m_swapChainRenderTargets[i]->m_vkImageView };
 
 		VkFramebufferCreateInfo createInfo = {};
 		createInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -1117,10 +1117,9 @@ void RenderDevice::createCommandBuffers(Mesh **meshes, uint32_t numMeshes)
 	commandBufferBeginInfo.pInheritanceInfo = nullptr;
 
 	// Note: contains value for each subresource range
-	VkClearValue clearValues[3];
+	VkClearValue clearValues[2];
 	clearValues[0].color = { 0.0f, 0.0f, 0.25f, 1.0f };  // R, G, B, A
-	clearValues[1].color = { 0.0f, 0.0f, 0.25f, 1.0f };  // R, G, B, A
-	clearValues[2].depthStencil = { 1.0f, 0 };			 // Depth / Stencil
+	clearValues[1].depthStencil = { 1.0f, 0 };			 // Depth / Stencil
 
 	VkImageSubresourceRange subResourceRange = {};
 	subResourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
