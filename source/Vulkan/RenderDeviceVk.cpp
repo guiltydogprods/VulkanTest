@@ -6,16 +6,6 @@
 
 #include "../Framework/Mesh.h"
 
-//#define FORCE_NVIDIA
-//#define FORCE_INTEL
-
-#define GLM_FORCE_RADIANS
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#include "glm/glm.hpp"
-#include "glm/gtc/matrix_transform.hpp"
-#define GLM_ENABLE_EXPERIMENTAL
-#include "glm/gtx/transform.hpp"
-
 const char* validationLayers[] = 
 {
 	"VK_LAYER_LUNARG_standard_validation"

@@ -5,6 +5,7 @@
 #include "Vulkan/BufferVk.h"
 #include "Vulkan/RenderDeviceVk.h"
 #include "Vulkan/RenderTargetVk.h"
+#include "Vulkan/SceneVk.h"
 
 ThunderBallApp s_thundeBallApp;
 
@@ -12,6 +13,9 @@ const char		*kApplicationName = "Thunder Ball";
 
 ThunderBallApp::ThunderBallApp()
 	: Application(kApplicationName)
+	, m_meshes(nullptr)
+	, m_numMeshes(0)
+	, m_scene(nullptr)
 {
 }
 
@@ -48,7 +52,21 @@ void ThunderBallApp::initialize(ScopeStack& scope, RenderDevice& renderDevice)
 	Texture **textures = resourceManager->m_textures;
 
 	renderDevice.createUniformBuffers(scope);
+
 	renderDevice.finalize(scope, meshes, numMeshes, textures,  numTextures);
+
+	const uint32_t kNumMeshInstances = 2;
+	m_scene = scope.newObject<Scene>(scope, renderDevice, kNumMeshInstances);
+
+	static float angle = 0.0f;
+
+	glm::vec3 axis(0.707f, 0.0f, 0.707f);
+	glm::vec3 axis2(-0.707f, 0.0f, -0.707f);
+	glm::mat4x4 modelMatrix0 = glm::translate(glm::vec3(-0.5f, 0.0f, 0.0f)) * glm::rotate(glm::radians(angle), axis);
+	glm::mat4x4 modelMatrix1 = glm::translate(glm::vec3(0.5f, 0.0f, 0.0f)) * glm::rotate(glm::radians(angle), axis2);
+
+	uint32_t meshIndex0 = m_scene->addMeshInstance(meshes[0], modelMatrix0);
+	uint32_t meshIndex1 = m_scene->addMeshInstance(meshes[1], modelMatrix1);
 }
 
 void ThunderBallApp::update(ScopeStack& frameScope, RenderDevice& renderDevice)
