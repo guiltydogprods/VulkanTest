@@ -7,6 +7,9 @@
 
 #include "../Framework/Mesh.h"
 
+//#define FORCE_NVIDIA
+//#define FORCE_INTEL
+
 const char* validationLayers[] = 
 {
 	"VK_LAYER_LUNARG_standard_validation"
