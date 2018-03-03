@@ -74,9 +74,9 @@ RenderDevice::RenderDevice(ScopeStack& scope, uint32_t maxWidth, uint32_t maxHei
 	, m_depthRenderTarget(nullptr)
 	, m_aaRenderTarget(nullptr)
 	, m_aaDepthRenderTarget(nullptr)
+	, m_scene(nullptr)
+	, m_textures(nullptr)
 	, m_numTextures(0)
-	, m_meshes(nullptr)
-	, m_numMeshes(0)
 	, m_maxWidth(maxWidth)
 	, m_maxHeight(maxHeight)
 {
@@ -106,15 +106,14 @@ void RenderDevice::initialize(ScopeStack& scope, GLFWwindow *window)
 
 void RenderDevice::finalize(ScopeStack& scope, Scene& scene, Mesh **meshes, uint32_t numMeshes, Texture **textures, uint32_t numTextures)
 {
-	m_meshes = meshes;
-	m_numMeshes = numMeshes;
+	m_scene = &scene;
 	m_textures = textures;
 	m_numTextures = numTextures;
 	createRenderPass();
 	createFramebuffers();
 	createGraphicsPipeline(scope);
 	createDescriptorSet(scene);
-	createCommandBuffers(meshes, numMeshes);
+	createCommandBuffers(scene);	// meshes, numMeshes);
 }
 
 void RenderDevice::cleanupSwapChain()
@@ -636,7 +635,7 @@ void RenderDevice::recreateSwapChain(ScopeStack& scope)
 	createRenderPass();
 	createGraphicsPipeline(scope);
 	createFramebuffers();
-	createCommandBuffers(m_meshes, m_numMeshes);
+	createCommandBuffers(*m_scene);
 }
 
 void RenderDevice::createRenderPass()
@@ -1070,7 +1069,7 @@ void RenderDevice::createDescriptorSet(Scene& scene)
 	vkUpdateDescriptorSets(m_vkDevice, 2+2*m_numTextures, writeDescriptorSet, 0, nullptr);
 }
 
-void RenderDevice::createCommandBuffers(Mesh **meshes, uint32_t numMeshes)
+void RenderDevice::createCommandBuffers(Scene& scene)
 {
 	VkCommandBufferAllocateInfo commandBufferAllocateInfo = {};
 	commandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -1153,12 +1152,12 @@ void RenderDevice::createCommandBuffers(Mesh **meshes, uint32_t numMeshes)
 
 		vkCmdBindIndexBuffer(m_vkCommandBuffers[i], m_indexBuffer->m_buffer, 0, VK_INDEX_TYPE_UINT32);
 
-		for (uint32_t draw = 0; draw < 2; ++draw)
+		for (uint32_t draw = 0; draw < scene.m_meshInstanceCount; ++draw)
 		{
-			if (meshes[draw] != nullptr)
+			if (scene.m_instanceMeshes[draw] != nullptr)
 			{
 				vkCmdPushConstants(m_vkCommandBuffers[i], m_vkPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, 4, &draw);
-				vkCmdDrawIndexed(m_vkCommandBuffers[i], meshes[draw]->m_renderables[0].getIndexCount(), 1, meshes[draw]->m_renderables[0].getFirstIndex(), meshes[draw]->m_renderables[0].getFirstVertex(), 0);
+				vkCmdDrawIndexed(m_vkCommandBuffers[i], scene.m_instanceMeshes[draw]->m_renderables[0].getIndexCount(), 1, scene.m_instanceMeshes[draw]->m_renderables[0].getFirstIndex(), scene.m_instanceMeshes[draw]->m_renderables[0].getFirstVertex(), 0);
 			}
 		}
 

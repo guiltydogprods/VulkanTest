@@ -86,7 +86,7 @@ struct RenderDevice
 	void createFramebuffers();
 	void createGraphicsPipeline(ScopeStack& scope);
 	void createDescriptorSet(Scene& scene);
-	void createCommandBuffers(Mesh **meshes, uint32_t numMeshes);
+	void createCommandBuffers(Scene& scene);
 	void recreateSwapChain(ScopeStack& scope);
 	void recreateDepthBuffer();
 
@@ -155,9 +155,8 @@ struct RenderDevice
 	RenderTarget						*m_aaRenderTarget;
 	RenderTarget						*m_aaDepthRenderTarget;;
 
-	Mesh								**m_meshes;
+	Scene								*m_scene;
 	Texture								**m_textures;
-	uint32_t							m_numMeshes;
 	uint32_t							m_numTextures;
 
 	uint32_t							m_maxWidth;
