@@ -113,7 +113,7 @@ void RenderDevice::finalize(ScopeStack& scope, Scene& scene, Mesh **meshes, uint
 	createFramebuffers();
 	createGraphicsPipeline(scope);
 	createDescriptorSet(scene);
-	createCommandBuffers(scene);	// meshes, numMeshes);
+	createCommandBuffers(scene);
 }
 
 void RenderDevice::cleanupSwapChain()
