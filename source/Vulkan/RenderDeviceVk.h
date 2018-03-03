@@ -66,7 +66,7 @@ struct RenderDevice
 	};
 
 	void initialize(ScopeStack& scope, GLFWwindow *window);
-	void finalize(ScopeStack& scope, Scene& scene, Mesh **meshes, uint32_t numMeshes, Texture **textures, uint32_t numTextures);
+	void finalize(ScopeStack& scope, Scene& scene, Texture **textures, uint32_t numTextures);
 	void cleanup();
 	void update(ScopeStack& scope);
 	void render(ScopeStack& scope);

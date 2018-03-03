@@ -104,7 +104,7 @@ void RenderDevice::initialize(ScopeStack& scope, GLFWwindow *window)
 	m_aaDepthRenderTarget = scope.newObject<RenderTarget>(scope, *this, m_maxWidth, m_maxHeight, VK_FORMAT_D32_SFLOAT, VK_SAMPLE_COUNT_4_BIT);
 }
 
-void RenderDevice::finalize(ScopeStack& scope, Scene& scene, Mesh **meshes, uint32_t numMeshes, Texture **textures, uint32_t numTextures)
+void RenderDevice::finalize(ScopeStack& scope, Scene& scene, Texture **textures, uint32_t numTextures)
 {
 	m_scene = &scene;
 	m_textures = textures;

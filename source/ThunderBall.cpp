@@ -56,7 +56,7 @@ void ThunderBallApp::initialize(ScopeStack& scope, RenderDevice& renderDevice)
 	const uint32_t kNumMeshInstances = 2;
 	m_scene = scope.newObject<Scene>(scope, renderDevice, kNumMeshInstances);
 
-	renderDevice.finalize(scope, *m_scene, meshes, numMeshes, textures,  numTextures);
+	renderDevice.finalize(scope, *m_scene, textures,  numTextures);
 
 	glm::vec3 axis[kNumMeshInstances] =
 	{
