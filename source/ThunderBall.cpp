@@ -53,28 +53,59 @@ void ThunderBallApp::initialize(ScopeStack& scope, RenderDevice& renderDevice)
 
 	renderDevice.createUniformBuffers(scope);
 
-	renderDevice.finalize(scope, meshes, numMeshes, textures,  numTextures);
-
 	const uint32_t kNumMeshInstances = 2;
 	m_scene = scope.newObject<Scene>(scope, renderDevice, kNumMeshInstances);
 
-	static float angle = 0.0f;
+	renderDevice.finalize(scope, *m_scene, meshes, numMeshes, textures,  numTextures);
 
-	glm::vec3 axis(0.707f, 0.0f, 0.707f);
-	glm::vec3 axis2(-0.707f, 0.0f, -0.707f);
-	glm::mat4x4 modelMatrix0 = glm::translate(glm::vec3(-0.5f, 0.0f, 0.0f)) * glm::rotate(glm::radians(angle), axis);
-	glm::mat4x4 modelMatrix1 = glm::translate(glm::vec3(0.5f, 0.0f, 0.0f)) * glm::rotate(glm::radians(angle), axis2);
+	glm::vec3 axis[kNumMeshInstances] =
+	{
+		{ 0.707f, 0.0f, 0.707f },
+		{ -0.707f, 0.0f, -0.707f },
+	};
+
+	glm::vec3 positions[kNumMeshInstances] = 
+	{
+		{ -0.5f, 0.0f, 0.0f },
+		{  0.5f, 0.0f, 0.0f },
+	};
+
+	m_rotationAxis = static_cast<glm::vec3 *>(scope.allocate(sizeof(glm::vec3) * numMeshes));
+	{
+		m_rotationAxis[i] = axis[i];
+		m_positions[i] = positions[i];
+	}
+
+	float angle = 0.0f;
+	glm::mat4x4 modelMatrix0 = glm::translate(m_positions[0]) * glm::rotate(glm::radians(angle), m_rotationAxis[0]);
+	glm::mat4x4 modelMatrix1 = glm::translate(m_positions[1]) * glm::rotate(glm::radians(angle), m_rotationAxis[1]);
 
 	uint32_t meshIndex0 = m_scene->addMeshInstance(meshes[0], modelMatrix0);
 	uint32_t meshIndex1 = m_scene->addMeshInstance(meshes[1], modelMatrix1);
 }
 
-void ThunderBallApp::update(ScopeStack& frameScope, RenderDevice& renderDevice)
+void ThunderBallApp::update(ScopeStack& scope, RenderDevice& renderDevice)
 {
-	renderDevice.update();
+	static float angle = 0.0f;
+	uint32_t numMeshes = m_scene->m_meshInstanceCount;
+
+	glm::mat4x4 *instanceMatrices = static_cast<glm::mat4x4 *>(m_scene->m_modelMatrixUniformBuffer->mapMemory());
+
+	for (uint32_t i = 0; i < numMeshes; ++i)
+	{
+		glm::mat4x4& instanceMatrix = instanceMatrices[i];
+		instanceMatrix = glm::translate(m_positions[i]) * glm::rotate(glm::radians(angle), m_rotationAxis[i]);
+	}
+	m_scene->m_modelMatrixUniformBuffer->unmapMemory();
+
+	angle += 1.0f;
+	if (angle > 360.0f)
+		angle -= 360.0f;
+
+	m_scene->update(scope);
 }
 
 void ThunderBallApp::render(ScopeStack& frameScope, RenderDevice& renderDevice)
 {
-	renderDevice.render(frameScope);
+	m_scene->render(frameScope);
 }

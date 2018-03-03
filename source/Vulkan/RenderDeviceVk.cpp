@@ -2,6 +2,7 @@
 #include "RenderDeviceVk.h"
 #include "BufferVk.h"
 #include "RenderTargetVk.h"
+#include "SceneVk.h"
 #include "TextureVk.h"
 
 #include "../Framework/Mesh.h"
@@ -100,7 +101,7 @@ void RenderDevice::initialize(ScopeStack& scope, GLFWwindow *window)
 	m_aaDepthRenderTarget = scope.newObject<RenderTarget>(scope, *this, m_maxWidth, m_maxHeight, VK_FORMAT_D32_SFLOAT, VK_SAMPLE_COUNT_4_BIT);
 }
 
-void RenderDevice::finalize(ScopeStack& scope, Mesh **meshes, uint32_t numMeshes, Texture **textures, uint32_t numTextures)
+void RenderDevice::finalize(ScopeStack& scope, Scene& scene, Mesh **meshes, uint32_t numMeshes, Texture **textures, uint32_t numTextures)
 {
 	m_meshes = meshes;
 	m_numMeshes = numMeshes;
@@ -109,7 +110,7 @@ void RenderDevice::finalize(ScopeStack& scope, Mesh **meshes, uint32_t numMeshes
 	createRenderPass();
 	createFramebuffers();
 	createGraphicsPipeline(scope);
-	createDescriptorSet();
+	createDescriptorSet(scene);
 	createCommandBuffers(meshes, numMeshes);
 }
 
@@ -153,15 +154,8 @@ void RenderDevice::cleanup()
 	vkDestroyInstance(m_vkInstance, nullptr);
 }
 
-void RenderDevice::update()
+void RenderDevice::update(ScopeStack& scope)
 {
-	static float angle = 0.0f;
-
-	glm::vec3 axis(0.707f, 0.0f, 0.707f);
-	glm::vec3 axis2(-0.707f, 0.0f, -0.707f);
-	glm::mat4x4 modelMatrix = glm::translate(glm::vec3(-0.5f, 0.0f, 0.0f)) * glm::rotate(glm::radians(angle), axis);
-	glm::mat4x4 modelMatrix2 = glm::translate(glm::vec3(0.5f, 0.0f, 0.0f)) * glm::rotate(glm::radians(angle), axis2);
-
 	glm::vec3 eye(0.0f, 0.0f, 1.5f);
 	glm::vec3 at(0.0f, 0.0f, 0.0f);
 	glm::vec3 up(0.0f, 1.0f, 0.0f);
@@ -187,15 +181,6 @@ void RenderDevice::update()
 	sceneUniformData->projectionMatrix = projectionMatrix;
 	sceneUniformData->viewProjectionMatrix = projectionMatrix * viewMatrix;
 	m_sceneUniformBuffer->unmapMemory();
-
-	ModelUniformData *modelUniformData = static_cast<ModelUniformData *>(m_modelMatrixUniformBuffer->mapMemory());
-	modelUniformData->tranformationMatrix[0] = modelMatrix;
-	modelUniformData->tranformationMatrix[1] = modelMatrix2;
-	m_modelMatrixUniformBuffer->unmapMemory();
-
-	angle += 1.0f;
-	if (angle > 360.0f)
-		angle -= 360.0f;
 }
 
 void RenderDevice::render(ScopeStack& scope)
@@ -556,9 +541,6 @@ void RenderDevice::createUniformBuffers(ScopeStack& scopeStack)
 {
 	m_sceneUniformBuffer = scopeStack.newObject<Buffer>(scopeStack, *this, sizeof(SceneUniformData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 	m_sceneUniformBuffer->bindMemory();
-
-	m_modelMatrixUniformBuffer = scopeStack.newObject<Buffer>(scopeStack, *this, sizeof(ModelUniformData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-	m_modelMatrixUniformBuffer->bindMemory();
 }
 
 void RenderDevice::createSwapChain(ScopeStack& scope)
@@ -972,7 +954,7 @@ void RenderDevice::createGraphicsPipeline(ScopeStack& scope)
 	vkDestroyShaderModule(m_vkDevice, fragmentShaderModule, nullptr);
 }
 
-void RenderDevice::createDescriptorSet()
+void RenderDevice::createDescriptorSet(Scene& scene)
 {
 	VkDescriptorPoolSize poolSizes[4] = {};
 	poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -1033,7 +1015,7 @@ void RenderDevice::createDescriptorSet()
 	writeDescriptorSet[0].pBufferInfo = &descriptorBufferInfo;
 
 	VkDescriptorBufferInfo descriptorBufferInfo2 = {};
-	descriptorBufferInfo2.buffer = m_modelMatrixUniformBuffer->m_buffer;
+	descriptorBufferInfo2.buffer = scene.m_modelMatrixUniformBuffer->m_buffer;
 	descriptorBufferInfo2.offset = 0;
 	descriptorBufferInfo2.range = sizeof(ModelUniformData);
 

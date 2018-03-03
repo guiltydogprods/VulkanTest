@@ -6,6 +6,7 @@ struct GPUMemAllocInfo;
 struct GPUMemoryBlock;
 struct MemorySubBlock;
 struct RenderTarget;
+struct Scene;
 struct Texture;
 
 const uint32_t kMaxGPUMemoryBlocks = 16;
@@ -65,9 +66,9 @@ struct RenderDevice
 	};
 
 	void initialize(ScopeStack& scope, GLFWwindow *window);
-	void finalize(ScopeStack& scope, Mesh **meshes, uint32_t numMeshes, Texture **textures, uint32_t numTextures);
+	void finalize(ScopeStack& scope, Scene& scene, Mesh **meshes, uint32_t numMeshes, Texture **textures, uint32_t numTextures);
 	void cleanup();
-	void update();
+	void update(ScopeStack& scope);
 	void render(ScopeStack& scope);
 
 	void cleanupSwapChain();
@@ -84,7 +85,7 @@ struct RenderDevice
 	void createRenderPass();
 	void createFramebuffers();
 	void createGraphicsPipeline(ScopeStack& scope);
-	void createDescriptorSet();
+	void createDescriptorSet(Scene& scene);
 	void createCommandBuffers(Mesh **meshes, uint32_t numMeshes);
 	void recreateSwapChain(ScopeStack& scope);
 	void recreateDepthBuffer();
@@ -126,7 +127,6 @@ struct RenderDevice
 	Buffer								*m_vertexBuffer;
 	Buffer								*m_indexBuffer;
 	Buffer								*m_sceneUniformBuffer;
-	Buffer								*m_modelMatrixUniformBuffer;
 
 	VkVertexInputBindingDescription		m_vkVertexBindingDescription;
 	uint32_t							m_vkVertexAttributeDescriptionCount;
