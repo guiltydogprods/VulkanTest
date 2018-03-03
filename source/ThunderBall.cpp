@@ -71,6 +71,8 @@ void ThunderBallApp::initialize(ScopeStack& scope, RenderDevice& renderDevice)
 	};
 
 	m_rotationAxis = static_cast<glm::vec3 *>(scope.allocate(sizeof(glm::vec3) * numMeshes));
+	m_positions = static_cast<glm::vec3 *>(scope.allocate(sizeof(glm::vec3) * numMeshes));
+	for (uint32_t i = 0; i < kNumMeshInstances; ++i)
 	{
 		m_rotationAxis[i] = axis[i];
 		m_positions[i] = positions[i];
