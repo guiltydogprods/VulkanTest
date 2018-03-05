@@ -868,7 +868,7 @@ void RenderDevice::createGraphicsPipeline(ScopeStack& scope)
 	ubo2LayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	ubo2LayoutBinding.descriptorCount = 1;
 	ubo2LayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-
+/*
 	VkDescriptorSetLayoutBinding samplerLayoutBinding = {};
 	samplerLayoutBinding.binding = 2;
 	samplerLayoutBinding.descriptorCount = 2;
@@ -883,7 +883,17 @@ void RenderDevice::createGraphicsPipeline(ScopeStack& scope)
 	texturesLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 	texturesLayoutBinding.pImmutableSamplers = nullptr;
 
-	VkDescriptorSetLayoutBinding bindings[] = { uboLayoutBinding, ubo2LayoutBinding, samplerLayoutBinding, texturesLayoutBinding };
+	VkDescriptorSetLayoutBinding bindings[] = { uboLayoutBinding, ubo2LayoutBinding, samplerLayoutBinding };	// , texturesLayoutBinding
+*/
+	VkDescriptorSetLayoutBinding textureLayoutBinding = {};
+	textureLayoutBinding.binding = 2;
+	textureLayoutBinding.descriptorCount = 2;
+	textureLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	textureLayoutBinding.pImmutableSamplers = nullptr;
+	textureLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+	VkDescriptorSetLayoutBinding bindings[] = { uboLayoutBinding, ubo2LayoutBinding, textureLayoutBinding };
+
 	VkDescriptorSetLayoutCreateInfo descriptorLayoutCreateInfo = {};
 	descriptorLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 	descriptorLayoutCreateInfo.bindingCount = sizeof(bindings) / sizeof(bindings[0]);
@@ -958,19 +968,22 @@ void RenderDevice::createGraphicsPipeline(ScopeStack& scope)
 
 void RenderDevice::createDescriptorSet(Scene& scene)
 {
-	VkDescriptorPoolSize poolSizes[4] = {};
+//	VkDescriptorPoolSize poolSizes[4] = {};
+	VkDescriptorPoolSize poolSizes[3] = {};
 	poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	poolSizes[0].descriptorCount = 1;
 	poolSizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	poolSizes[1].descriptorCount = 1;
-	poolSizes[2].type = VK_DESCRIPTOR_TYPE_SAMPLER;
+//	poolSizes[2].type = VK_DESCRIPTOR_TYPE_SAMPLER;
+//	poolSizes[2].descriptorCount = 2;
+//	poolSizes[3].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+//	poolSizes[3].descriptorCount = 2;
+	poolSizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	poolSizes[2].descriptorCount = 2;
-	poolSizes[3].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-	poolSizes[3].descriptorCount = 2;
 
 	VkDescriptorPoolCreateInfo createInfo = {};
 	createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	createInfo.poolSizeCount = 4;
+	createInfo.poolSizeCount = 3;	//4
 	createInfo.pPoolSizes = poolSizes;
 	createInfo.maxSets = 1;
 
@@ -1007,7 +1020,7 @@ void RenderDevice::createDescriptorSet(Scene& scene)
 	descriptorBufferInfo.offset = 0;
 	descriptorBufferInfo.range = sizeof(SceneUniformData);
 
-	VkWriteDescriptorSet writeDescriptorSet[6] = {};
+	VkWriteDescriptorSet writeDescriptorSet[3] = {};
 	writeDescriptorSet[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	writeDescriptorSet[0].dstSet = m_vkDescriptorSet;
 	writeDescriptorSet[0].dstBinding = 0;
@@ -1029,33 +1042,35 @@ void RenderDevice::createDescriptorSet(Scene& scene)
 	writeDescriptorSet[1].descriptorCount = 1;
 	writeDescriptorSet[1].pBufferInfo = &descriptorBufferInfo2;
 
-	VkDescriptorImageInfo *imageInfo = static_cast<VkDescriptorImageInfo *>(alloca(sizeof(VkDescriptorImageInfo) * m_numTextures));
-	memset(imageInfo, 0, sizeof(VkDescriptorImageInfo) * m_numTextures);
+//	VkDescriptorImageInfo *imageInfo = static_cast<VkDescriptorImageInfo *>(alloca(sizeof(VkDescriptorImageInfo) * m_numTextures));
+//	memset(imageInfo, 0, sizeof(VkDescriptorImageInfo) * m_numTextures);
 
 	VkDescriptorImageInfo *texImageInfo = static_cast<VkDescriptorImageInfo *>(alloca(sizeof(VkDescriptorImageInfo) * m_numTextures));
 	memset(texImageInfo, 0, sizeof(VkDescriptorImageInfo) * m_numTextures);
 
 	for (uint32_t i = 0; i < m_numTextures; i++)
 	{
-		imageInfo[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		imageInfo[i].imageView = VK_NULL_HANDLE;
-		imageInfo[i].sampler = m_textures[i]->m_vkSampler;
-
+//		imageInfo[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+//		imageInfo[i].imageView = VK_NULL_HANDLE;
+//		imageInfo[i].sampler = m_textures[i]->m_vkSampler;
+//		texImageInfo[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+//		texImageInfo[i].imageView = m_textures[i]->m_vkImageView;
+//		texImageInfo[i].sampler = VK_NULL_HANDLE;
 		texImageInfo[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		texImageInfo[i].imageView = m_textures[i]->m_vkImageView;
-		texImageInfo[i].sampler = VK_NULL_HANDLE;
+		texImageInfo[i].sampler = m_textures[i]->m_vkSampler;
 	}
-
+/*
 	for (uint32_t i = 0; i < m_numTextures; i++)
 	{
 		uint32_t di = 2 + i;
 		writeDescriptorSet[di].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		writeDescriptorSet[di].dstSet = m_vkDescriptorSet;
 		writeDescriptorSet[di].dstBinding = 2;
-		writeDescriptorSet[di].dstArrayElement = i;
+		writeDescriptorSet[di].dstArrayElement = 0;
 		writeDescriptorSet[di].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
-		writeDescriptorSet[di].descriptorCount = 1;
-		writeDescriptorSet[di].pImageInfo = &imageInfo[i];
+		writeDescriptorSet[di].descriptorCount = 2;
+		writeDescriptorSet[di].pImageInfo = texImageInfo;
 
 		di = 2 + m_numTextures + i;
 		writeDescriptorSet[di].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -1066,7 +1081,17 @@ void RenderDevice::createDescriptorSet(Scene& scene)
 		writeDescriptorSet[di].descriptorCount = 1;
 		writeDescriptorSet[di].pImageInfo = &texImageInfo[i];
 	}
-	vkUpdateDescriptorSets(m_vkDevice, 2+2*m_numTextures, writeDescriptorSet, 0, nullptr);
+*/
+	uint32_t di = 2;
+	writeDescriptorSet[di].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	writeDescriptorSet[di].dstSet = m_vkDescriptorSet;
+	writeDescriptorSet[di].dstBinding = 2;
+	writeDescriptorSet[di].dstArrayElement = 0;
+	writeDescriptorSet[di].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	writeDescriptorSet[di].descriptorCount = 2;
+	writeDescriptorSet[di].pImageInfo = texImageInfo;
+
+	vkUpdateDescriptorSets(m_vkDevice, 2+1, writeDescriptorSet, 0, nullptr);
 }
 
 void RenderDevice::createCommandBuffers(Scene& scene)
