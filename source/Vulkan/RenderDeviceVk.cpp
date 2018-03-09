@@ -879,7 +879,7 @@ void RenderDevice::createGraphicsPipeline(ScopeStack& scope)
 	VkDescriptorSetLayoutBinding texturesLayoutBinding = {};
 	texturesLayoutBinding.binding = 3;
 	texturesLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-	texturesLayoutBinding.descriptorCount = 2;
+	texturesLayoutBinding.descriptorCount = 3;
 	texturesLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 	texturesLayoutBinding.pImmutableSamplers = nullptr;
 
@@ -887,7 +887,7 @@ void RenderDevice::createGraphicsPipeline(ScopeStack& scope)
 */
 	VkDescriptorSetLayoutBinding textureLayoutBinding = {};
 	textureLayoutBinding.binding = 2;
-	textureLayoutBinding.descriptorCount = 2;
+	textureLayoutBinding.descriptorCount = 3;
 	textureLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	textureLayoutBinding.pImmutableSamplers = nullptr;
 	textureLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
@@ -979,7 +979,7 @@ void RenderDevice::createDescriptorSet(Scene& scene)
 //	poolSizes[3].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 //	poolSizes[3].descriptorCount = 2;
 	poolSizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	poolSizes[2].descriptorCount = 2;
+	poolSizes[2].descriptorCount = 3;
 
 	VkDescriptorPoolCreateInfo createInfo = {};
 	createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -1045,8 +1045,8 @@ void RenderDevice::createDescriptorSet(Scene& scene)
 //	VkDescriptorImageInfo *imageInfo = static_cast<VkDescriptorImageInfo *>(alloca(sizeof(VkDescriptorImageInfo) * m_numTextures));
 //	memset(imageInfo, 0, sizeof(VkDescriptorImageInfo) * m_numTextures);
 
-	VkDescriptorImageInfo *texImageInfo = static_cast<VkDescriptorImageInfo *>(alloca(sizeof(VkDescriptorImageInfo) * m_numTextures));
-	memset(texImageInfo, 0, sizeof(VkDescriptorImageInfo) * m_numTextures);
+	VkDescriptorImageInfo *texImageInfo = static_cast<VkDescriptorImageInfo *>(alloca(sizeof(VkDescriptorImageInfo) * (m_numTextures+1)));
+	memset(texImageInfo, 0, sizeof(VkDescriptorImageInfo) * m_numTextures+1);
 
 	for (uint32_t i = 0; i < m_numTextures; i++)
 	{
@@ -1060,6 +1060,9 @@ void RenderDevice::createDescriptorSet(Scene& scene)
 		texImageInfo[i].imageView = m_textures[i]->m_vkImageView;
 		texImageInfo[i].sampler = m_textures[i]->m_vkSampler;
 	}
+	texImageInfo[2].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	texImageInfo[2].imageView = m_textures[0]->m_vkImageView;
+	texImageInfo[2].sampler = m_textures[0]->m_vkSampler;
 /*
 	for (uint32_t i = 0; i < m_numTextures; i++)
 	{
