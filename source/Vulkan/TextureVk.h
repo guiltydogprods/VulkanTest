@@ -50,6 +50,7 @@ struct DDS_HEADER
 struct Texture
 {
 	Texture(ScopeStack& scope, RenderDevice& renderDevice, const char *filename);
+	Texture(ScopeStack& scope, RenderDevice& renderDevice, uint32_t width, uint32_t height);
 	~Texture();
 
 	RenderDevice&	m_renderDevice;

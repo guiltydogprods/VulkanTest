@@ -172,6 +172,98 @@ Texture::Texture(ScopeStack& scope, RenderDevice& renderDevice, const char *file
 	}
 }
 
+Texture::Texture(ScopeStack& scope, RenderDevice& renderDevice, uint32_t width, uint32_t height) 
+	: m_renderDevice(renderDevice)
+	, m_vkImage(nullptr)
+	, m_vkImageView(nullptr)
+	, m_memAllocInfo{ _dummyMemAllocInfo }
+{
+	VkImageCreateInfo  imageCreateInfo = {};
+	imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+	imageCreateInfo.pNext = nullptr;
+	imageCreateInfo.flags = 0;
+	imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
+	imageCreateInfo.format = VK_FORMAT_R32_UINT;
+	imageCreateInfo.extent.width = width;
+	imageCreateInfo.extent.height = height;
+	imageCreateInfo.extent.depth = 1;
+	imageCreateInfo.mipLevels = 1;
+	imageCreateInfo.arrayLayers = 1;
+	imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+	imageCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+	imageCreateInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+	imageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	imageCreateInfo.queueFamilyIndexCount = 0;
+	imageCreateInfo.pQueueFamilyIndices = nullptr;
+	imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	if (vkCreateImage(renderDevice.m_vkDevice, &imageCreateInfo, nullptr, &m_vkImage) != VK_SUCCESS)
+	{
+		print("failed to create empty image.\n");
+		exit(1);
+	}
+
+	VkMemoryRequirements memRequirements;
+	vkGetImageMemoryRequirements(renderDevice.m_vkDevice, m_vkImage, &memRequirements);
+
+	uint32_t memoryTypeIndex = renderDevice.getMemoryType(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	m_memAllocInfo = RenderDevice::GPUMemoryManager::Instance().allocate(scope, memRequirements.size, memRequirements.alignment, imageCreateInfo.tiling == VK_IMAGE_TILING_OPTIMAL ? (1 << 8) | memoryTypeIndex : memoryTypeIndex);
+	if (vkBindImageMemory(renderDevice.m_vkDevice, m_vkImage, m_memAllocInfo.get().memoryBlock.m_memory, m_memAllocInfo.get().offset) != VK_SUCCESS)
+	{
+		print("failed to bind memory to image\n");
+		exit(1);
+	}
+
+//	VkCommandBuffer commandBuffer = renderDevice.beginSingleUseCommandBuffer();
+
+	VkImageSubresourceRange subresourceRange = {};
+	subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	subresourceRange.baseMipLevel = 0;
+	subresourceRange.levelCount = 1;
+	subresourceRange.layerCount = 1;
+
+//	renderDevice.transitionImageLayout(commandBuffer, m_vkImage, subresourceRange, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	// Copy mip levels from staging buffer
+//	vkCmdCopyBufferToImage(commandBuffer, stagingBuffer.m_buffer, m_vkImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipMapCount, bufferCopyRegions);
+//	renderDevice.transitionImageLayout(commandBuffer, m_vkImage, subresourceRange, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+//	renderDevice.endSingleUseCommandBuffer(commandBuffer);
+
+	VkImageViewCreateInfo viewInfo = {};
+	viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	viewInfo.image = m_vkImage;
+	viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	viewInfo.format = VK_FORMAT_R32_UINT;
+	viewInfo.subresourceRange = subresourceRange;
+	if (vkCreateImageView(renderDevice.m_vkDevice, &viewInfo, nullptr, &m_vkImageView) != VK_SUCCESS)
+	{
+		print("failed to create image view\n");
+		exit(EXIT_FAILURE);
+	}
+
+	VkSamplerCreateInfo samplerInfo = {};
+	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+	samplerInfo.magFilter = VK_FILTER_LINEAR;
+	samplerInfo.minFilter = VK_FILTER_LINEAR;
+	samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+	samplerInfo.mipLodBias = 0.0f;
+	samplerInfo.minLod = 0.0f;
+	samplerInfo.maxLod = 1.0f;
+	samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	samplerInfo.anisotropyEnable = VK_TRUE;
+	samplerInfo.maxAnisotropy = 1;
+	samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+	samplerInfo.unnormalizedCoordinates = VK_FALSE;
+	samplerInfo.compareEnable = VK_FALSE;
+	samplerInfo.compareOp = VK_COMPARE_OP_NEVER;
+	if (vkCreateSampler(renderDevice.m_vkDevice, &samplerInfo, nullptr, &m_vkSampler) != VK_SUCCESS)
+	{
+		print("failed to create sampler.\n");
+		exit(EXIT_FAILURE);
+	}
+}
+
 Texture::~Texture()
 {
 	vkDestroySampler(m_renderDevice.m_vkDevice, m_vkSampler, nullptr);
