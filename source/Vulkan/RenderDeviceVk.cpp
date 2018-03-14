@@ -102,6 +102,7 @@ void RenderDevice::initialize(ScopeStack& scope, GLFWwindow *window)
 //	m_depthRendereTarget = scope.newObject<RenderTarget>(scope, *this, m_maxWidth, m_maxHeight, VK_FORMAT_D32_SFLOAT, VK_SAMPLE_COUNT_1_BIT);
 	m_aaRenderTarget = scope.newObject<RenderTarget>(scope, *this, m_maxWidth, m_maxHeight, m_vkSwapChainFormat, VK_SAMPLE_COUNT_4_BIT);
 	m_aaDepthRenderTarget = scope.newObject<RenderTarget>(scope, *this, m_maxWidth, m_maxHeight, VK_FORMAT_D32_SFLOAT, VK_SAMPLE_COUNT_4_BIT);
+	m_dummyTexture = scope.newObject<Texture>(scope, *this, 1, 1, VK_FORMAT_R32_UINT);
 }
 
 void RenderDevice::finalize(ScopeStack& scope, Scene& scene, Texture **textures, uint32_t numTextures)
@@ -1061,8 +1062,8 @@ void RenderDevice::createDescriptorSet(Scene& scene)
 		texImageInfo[i].sampler = m_textures[i]->m_vkSampler;
 	}
 	texImageInfo[2].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	texImageInfo[2].imageView = m_textures[0]->m_vkImageView;
-	texImageInfo[2].sampler = m_textures[0]->m_vkSampler;
+	texImageInfo[2].imageView = m_dummyTexture->m_vkImageView;
+	texImageInfo[2].sampler = m_dummyTexture->m_vkSampler;
 /*
 	for (uint32_t i = 0; i < m_numTextures; i++)
 	{
@@ -1091,7 +1092,7 @@ void RenderDevice::createDescriptorSet(Scene& scene)
 	writeDescriptorSet[di].dstBinding = 2;
 	writeDescriptorSet[di].dstArrayElement = 0;
 	writeDescriptorSet[di].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	writeDescriptorSet[di].descriptorCount = 2;
+	writeDescriptorSet[di].descriptorCount = 3;
 	writeDescriptorSet[di].pImageInfo = texImageInfo;
 
 	vkUpdateDescriptorSets(m_vkDevice, 2+1, writeDescriptorSet, 0, nullptr);

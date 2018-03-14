@@ -28,7 +28,7 @@ Texture::Texture(ScopeStack& scope, RenderDevice& renderDevice, const char *file
 	uint32_t texWidth = header->dwWidth;
 	uint32_t linearSize = header->dwPitchOrLinearSize;
 	uint32_t texDepth = header->dwDepth;
-	uint32_t mipMapCount = header->dwMipMapCount;
+	uint32_t mipmapCount = header->dwMipMapCount;
 	uint32_t fourCC = header->ddspf.dwFourCC;
 
 	uint32_t components = (fourCC == FOURCC_DXT1) ? 3 : 4;
@@ -63,12 +63,12 @@ Texture::Texture(ScopeStack& scope, RenderDevice& renderDevice, const char *file
 	}
 
 	// Setup buffer copy regions for each mip level
-	VkBufferImageCopy *bufferCopyRegions = static_cast<VkBufferImageCopy *>(alloca(sizeof(VkBufferImageCopy) * mipMapCount));
-	memset(bufferCopyRegions, 0, sizeof(VkBufferImageCopy) * mipMapCount);
+	VkBufferImageCopy *bufferCopyRegions = static_cast<VkBufferImageCopy *>(alloca(sizeof(VkBufferImageCopy) * mipmapCount));
+	memset(bufferCopyRegions, 0, sizeof(VkBufferImageCopy) * mipmapCount);
 	uint32_t offset = 0;
 	uint32_t mipWidth = texWidth;
 	uint32_t mipHeight = texHeight;
-	for (uint32_t i = 0; i < mipMapCount && (mipWidth || mipHeight); i++)
+	for (uint32_t i = 0; i < mipmapCount && (mipWidth || mipHeight); i++)
 	{
 		uint32_t regionSize = ((mipWidth + 3) / 4) * ((mipHeight + 3) / 4) * blockSize;
 
@@ -95,7 +95,7 @@ Texture::Texture(ScopeStack& scope, RenderDevice& renderDevice, const char *file
 	imageCreateInfo.extent.width = texWidth;
 	imageCreateInfo.extent.height = texHeight;
 	imageCreateInfo.extent.depth = 1;
-	imageCreateInfo.mipLevels = mipMapCount;
+	imageCreateInfo.mipLevels = mipmapCount;
 	imageCreateInfo.arrayLayers = 1;
 	imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
 	imageCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
@@ -126,12 +126,12 @@ Texture::Texture(ScopeStack& scope, RenderDevice& renderDevice, const char *file
 	VkImageSubresourceRange subresourceRange = {};
 	subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 	subresourceRange.baseMipLevel = 0;
-	subresourceRange.levelCount = mipMapCount;
+	subresourceRange.levelCount = mipmapCount;
 	subresourceRange.layerCount = 1;
 
 	renderDevice.transitionImageLayout(commandBuffer, m_vkImage, subresourceRange, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 	// Copy mip levels from staging buffer
-	vkCmdCopyBufferToImage(commandBuffer, stagingBuffer.m_buffer, m_vkImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipMapCount, bufferCopyRegions);
+	vkCmdCopyBufferToImage(commandBuffer, stagingBuffer.m_buffer, m_vkImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipmapCount, bufferCopyRegions);
 	renderDevice.transitionImageLayout(commandBuffer, m_vkImage, subresourceRange, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
 	renderDevice.endSingleUseCommandBuffer(commandBuffer);
@@ -155,7 +155,7 @@ Texture::Texture(ScopeStack& scope, RenderDevice& renderDevice, const char *file
 	samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
 	samplerInfo.mipLodBias = 0.0f;
 	samplerInfo.minLod = 0.0f;
-	samplerInfo.maxLod = (float)mipMapCount;
+	samplerInfo.maxLod = static_cast<float>(mipmapCount);
 	samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 	samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 	samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
@@ -172,22 +172,24 @@ Texture::Texture(ScopeStack& scope, RenderDevice& renderDevice, const char *file
 	}
 }
 
-Texture::Texture(ScopeStack& scope, RenderDevice& renderDevice, uint32_t width, uint32_t height) 
+Texture::Texture(ScopeStack& scope, RenderDevice& renderDevice, uint32_t width, uint32_t height, VkFormat format) 
 	: m_renderDevice(renderDevice)
 	, m_vkImage(nullptr)
 	, m_vkImageView(nullptr)
 	, m_memAllocInfo{ _dummyMemAllocInfo }
 {
+	uint32_t mipmapCount = calcNumMips(width, height);
+
 	VkImageCreateInfo  imageCreateInfo = {};
 	imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 	imageCreateInfo.pNext = nullptr;
 	imageCreateInfo.flags = 0;
 	imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
-	imageCreateInfo.format = VK_FORMAT_R32_UINT;
+	imageCreateInfo.format = format;
 	imageCreateInfo.extent.width = width;
 	imageCreateInfo.extent.height = height;
 	imageCreateInfo.extent.depth = 1;
-	imageCreateInfo.mipLevels = 1;
+	imageCreateInfo.mipLevels = mipmapCount;
 	imageCreateInfo.arrayLayers = 1;
 	imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
 	imageCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
@@ -218,7 +220,7 @@ Texture::Texture(ScopeStack& scope, RenderDevice& renderDevice, uint32_t width, 
 	VkImageSubresourceRange subresourceRange = {};
 	subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 	subresourceRange.baseMipLevel = 0;
-	subresourceRange.levelCount = 1;
+	subresourceRange.levelCount = mipmapCount;
 	subresourceRange.layerCount = 1;
 
 //	renderDevice.transitionImageLayout(commandBuffer, m_vkImage, subresourceRange, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
@@ -232,7 +234,7 @@ Texture::Texture(ScopeStack& scope, RenderDevice& renderDevice, uint32_t width, 
 	viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 	viewInfo.image = m_vkImage;
 	viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-	viewInfo.format = VK_FORMAT_R32_UINT;
+	viewInfo.format = format;
 	viewInfo.subresourceRange = subresourceRange;
 	if (vkCreateImageView(renderDevice.m_vkDevice, &viewInfo, nullptr, &m_vkImageView) != VK_SUCCESS)
 	{
@@ -247,12 +249,12 @@ Texture::Texture(ScopeStack& scope, RenderDevice& renderDevice, uint32_t width, 
 	samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
 	samplerInfo.mipLodBias = 0.0f;
 	samplerInfo.minLod = 0.0f;
-	samplerInfo.maxLod = 1.0f;
+	samplerInfo.maxLod = static_cast<float>(mipmapCount);
 	samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 	samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 	samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 	samplerInfo.anisotropyEnable = VK_TRUE;
-	samplerInfo.maxAnisotropy = 1;
+	samplerInfo.maxAnisotropy = 8;
 	samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
 	samplerInfo.unnormalizedCoordinates = VK_FALSE;
 	samplerInfo.compareEnable = VK_FALSE;
@@ -269,4 +271,16 @@ Texture::~Texture()
 	vkDestroySampler(m_renderDevice.m_vkDevice, m_vkSampler, nullptr);
 	vkDestroyImageView(m_renderDevice.m_vkDevice, m_vkImageView, nullptr);
 	vkDestroyImage(m_renderDevice.m_vkDevice, m_vkImage, nullptr);
+}
+
+uint32_t Texture::calcNumMips(uint32_t width, uint32_t height)
+{
+	uint32_t maxDim = std::max(width, height);
+	if (maxDim == 0)
+		return 0;
+
+	uint32_t numMips = 1;
+	while (maxDim >>= 1)
+		++numMips;
+	return numMips;
 }

@@ -50,8 +50,10 @@ struct DDS_HEADER
 struct Texture
 {
 	Texture(ScopeStack& scope, RenderDevice& renderDevice, const char *filename);
-	Texture(ScopeStack& scope, RenderDevice& renderDevice, uint32_t width, uint32_t height);
+	Texture(ScopeStack& scope, RenderDevice& renderDevice, uint32_t width, uint32_t height, VkFormat format);
 	~Texture();
+
+	uint32_t calcNumMips(uint32_t width, uint32_t height);
 
 	RenderDevice&	m_renderDevice;
 	VkImage			m_vkImage;

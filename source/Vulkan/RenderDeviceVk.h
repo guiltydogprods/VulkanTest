@@ -153,8 +153,9 @@ struct RenderDevice
 
 	RenderTarget						*m_depthRenderTarget;
 	RenderTarget						*m_aaRenderTarget;
-	RenderTarget						*m_aaDepthRenderTarget;;
+	RenderTarget						*m_aaDepthRenderTarget;
 
+	Texture								*m_dummyTexture;
 	Scene								*m_scene;
 	Texture								**m_textures;
 	uint32_t							m_numTextures;
