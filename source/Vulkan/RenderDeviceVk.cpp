@@ -32,7 +32,7 @@ struct Vertex
 
 struct ModelUniformData
 {
-	glm::mat4x4 tranformationMatrix[2];
+	glm::mat4x4 tranformationMatrix[3];
 };
 
 struct SceneUniformData
@@ -159,7 +159,7 @@ void RenderDevice::cleanup()
 
 void RenderDevice::update(ScopeStack& scope)
 {
-	glm::vec3 eye(0.0f, 0.0f, 1.5f);
+	glm::vec3 eye(0.0f, 0.0f, 2.5f);
 	glm::vec3 at(0.0f, 0.0f, 0.0f);
 	glm::vec3 up(0.0f, 1.0f, 0.0f);
 	glm::mat4x4 viewMatrix = glm::lookAt(eye, at, up);
@@ -1061,9 +1061,9 @@ void RenderDevice::createDescriptorSet(Scene& scene)
 		texImageInfo[i].imageView = m_textures[i]->m_vkImageView;
 		texImageInfo[i].sampler = m_textures[i]->m_vkSampler;
 	}
-	texImageInfo[2].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	texImageInfo[2].imageView = m_dummyTexture->m_vkImageView;
-	texImageInfo[2].sampler = m_dummyTexture->m_vkSampler;
+//	texImageInfo[2].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+//	texImageInfo[2].imageView = m_dummyTexture->m_vkImageView;
+//	texImageInfo[2].sampler = m_dummyTexture->m_vkSampler;
 /*
 	for (uint32_t i = 0; i < m_numTextures; i++)
 	{

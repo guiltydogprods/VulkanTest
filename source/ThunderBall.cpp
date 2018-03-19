@@ -42,6 +42,7 @@ void ThunderBallApp::initialize(ScopeStack& scope, RenderDevice& renderDevice)
 		{ "box.s3d", kRTMesh		},
 		{ "stone34.dds", kRTTexture },
 		{ "rock7.dds", kRTTexture },
+		{ "wood.dds", kRTTexture },
 	};
 
 	ResourceManager *resourceManager = scope.newObject<ResourceManager>(scope, renderDevice, resources);
@@ -53,7 +54,7 @@ void ThunderBallApp::initialize(ScopeStack& scope, RenderDevice& renderDevice)
 
 	renderDevice.createUniformBuffers(scope);
 
-	const uint32_t kNumMeshInstances = 2;
+	const uint32_t kNumMeshInstances = 3;
 	m_scene = scope.newObject<Scene>(scope, renderDevice, kNumMeshInstances);
 
 	renderDevice.finalize(scope, *m_scene, textures,  numTextures);
@@ -62,12 +63,14 @@ void ThunderBallApp::initialize(ScopeStack& scope, RenderDevice& renderDevice)
 	{
 		{ 0.707f, 0.0f, 0.707f },
 		{ -0.707f, 0.0f, -0.707f },
+		{ 1.0f, 0.0f, 0.0f },
 	};
 
 	glm::vec3 positions[kNumMeshInstances] = 
 	{
-		{ -0.5f, 0.0f, 0.0f },
-		{  0.5f, 0.0f, 0.0f },
+		{ -1.0f, 0.0f, 0.0f },
+		{  1.0f, 0.0f, 0.0f },
+		{  0.0f,  0.0f, 0.0f },
 	};
 
 	m_rotationAxis = static_cast<glm::vec3 *>(scope.allocate(sizeof(glm::vec3) * numMeshes));
@@ -81,9 +84,11 @@ void ThunderBallApp::initialize(ScopeStack& scope, RenderDevice& renderDevice)
 	float angle = 0.0f;
 	glm::mat4x4 modelMatrix0 = glm::translate(m_positions[0]) * glm::rotate(glm::radians(angle), m_rotationAxis[0]);
 	glm::mat4x4 modelMatrix1 = glm::translate(m_positions[1]) * glm::rotate(glm::radians(angle), m_rotationAxis[1]);
+	glm::mat4x4 modelMatrix2 = glm::translate(m_positions[2]) * glm::rotate(glm::radians(angle), m_rotationAxis[2]);
 
 	uint32_t meshIndex0 = m_scene->addMeshInstance(meshes[0], modelMatrix0);
 	uint32_t meshIndex1 = m_scene->addMeshInstance(meshes[1], modelMatrix1);
+	uint32_t meshIndex2 = m_scene->addMeshInstance(meshes[2], modelMatrix2);
 }
 
 void ThunderBallApp::update(ScopeStack& scope, RenderDevice& renderDevice)
