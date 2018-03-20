@@ -68,7 +68,6 @@ struct RenderDevice
 	void initialize(ScopeStack& scope, GLFWwindow *window);
 	void finalize(ScopeStack& scope, Scene& scene, Texture **textures, uint32_t numTextures);
 	void cleanup();
-	void update(ScopeStack& scope);
 	void render(ScopeStack& scope);
 
 	void cleanupSwapChain();
@@ -79,7 +78,6 @@ struct RenderDevice
 	void createCommandPool();
 	void createDepthBuffer(ScopeStack& scope);
 	void createVertexFormat(ScopeStack& scope);
-	void createUniformBuffers(ScopeStack& scope);
 	void createSwapChain(ScopeStack& scope);
 	void createSwapChain(ScopeStack* scope = nullptr);
 	void createRenderPass();
@@ -126,7 +124,6 @@ struct RenderDevice
 
 	Buffer								*m_vertexBuffer;
 	Buffer								*m_indexBuffer;
-	Buffer								*m_sceneUniformBuffer;
 
 	VkVertexInputBindingDescription		m_vkVertexBindingDescription;
 	uint32_t							m_vkVertexAttributeDescriptionCount;

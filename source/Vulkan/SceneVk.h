@@ -3,6 +3,13 @@
 struct Mesh;
 struct Buffer;
 
+struct SceneUniformData
+{
+	glm::mat4x4 viewMatrix;
+	glm::mat4x4 projectionMatrix;
+	glm::mat4x4 viewProjectionMatrix;
+};
+
 struct Scene
 {
 	Scene(ScopeStack& scope, RenderDevice& renderDevice, uint32_t maxMeshes);
@@ -17,6 +24,7 @@ struct Scene
 	Mesh		**m_instanceMeshes;
 	glm::mat4x4 *m_instanceMatrices;
 
+	Buffer		*m_sceneUniformBuffer;
 	Buffer		*m_modelMatrixUniformBuffer;
 
 	uint32_t m_capacity;

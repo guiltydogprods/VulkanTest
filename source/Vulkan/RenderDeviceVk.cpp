@@ -35,13 +35,6 @@ struct ModelUniformData
 	glm::mat4x4 tranformationMatrix[3];
 };
 
-struct SceneUniformData
-{
-	glm::mat4x4 viewMatrix;
-	glm::mat4x4 projectionMatrix;
-	glm::mat4x4 viewProjectionMatrix;
-};
-
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objType, uint64_t obj, size_t location, int32_t code, const char* layerPrefix, const char* msg, void* userData)
 {
 	if (flags & VK_DEBUG_REPORT_ERROR_BIT_EXT)
@@ -155,35 +148,6 @@ void RenderDevice::cleanup()
 		DestroyDebugReportCallback(m_vkInstance, m_vkDebugReportCallback, nullptr);
 	}
 	vkDestroyInstance(m_vkInstance, nullptr);
-}
-
-void RenderDevice::update(ScopeStack& scope)
-{
-	glm::vec3 eye(0.0f, 0.0f, 2.5f);
-	glm::vec3 at(0.0f, 0.0f, 0.0f);
-	glm::vec3 up(0.0f, 1.0f, 0.0f);
-	glm::mat4x4 viewMatrix = glm::lookAt(eye, at, up);
-
-	Application* app = Application::GetApplication();
-
-	const float fov = glm::radians(90.0f);
-	const float aspectRatio = (float)app->getScreenHeight() / (float)app->getScreenWidth();
-	const float nearZ = 0.1f;
-	const float farZ = 100.0f;
-	const float focalLength = 1.0f / tanf(fov * 0.5f);
-
-	float left = -nearZ / focalLength;
-	float right = nearZ / focalLength;
-	float bottom = -aspectRatio * nearZ / focalLength;
-	float top = aspectRatio * nearZ / focalLength;
-
-	glm::mat4x4 projectionMatrix = glm::frustum(left, right, bottom, top, nearZ, farZ);
-
-	SceneUniformData *sceneUniformData = static_cast<SceneUniformData *>(m_sceneUniformBuffer->mapMemory());
-	sceneUniformData->viewMatrix = viewMatrix;
-	sceneUniformData->projectionMatrix = projectionMatrix;
-	sceneUniformData->viewProjectionMatrix = projectionMatrix * viewMatrix;
-	m_sceneUniformBuffer->unmapMemory();
 }
 
 void RenderDevice::render(ScopeStack& scope)
@@ -538,12 +502,6 @@ void RenderDevice::createVertexFormat(ScopeStack& scope)
 	m_vkVertexAttributeDescriptions[2].location = 2;
 	m_vkVertexAttributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
 	m_vkVertexAttributeDescriptions[2].offset = sizeof(float) * 6;
-}
-
-void RenderDevice::createUniformBuffers(ScopeStack& scopeStack)
-{
-	m_sceneUniformBuffer = scopeStack.newObject<Buffer>(scopeStack, *this, sizeof(SceneUniformData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-	m_sceneUniformBuffer->bindMemory();
 }
 
 void RenderDevice::createSwapChain(ScopeStack& scope)
@@ -1017,7 +975,7 @@ void RenderDevice::createDescriptorSet(Scene& scene)
 
 	// Update descriptor set with uniform binding
 	VkDescriptorBufferInfo descriptorBufferInfo = {};
-	descriptorBufferInfo.buffer = m_sceneUniformBuffer->m_buffer;
+	descriptorBufferInfo.buffer = scene.m_sceneUniformBuffer->m_buffer;
 	descriptorBufferInfo.offset = 0;
 	descriptorBufferInfo.range = sizeof(SceneUniformData);
 
