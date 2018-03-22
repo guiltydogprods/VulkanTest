@@ -52,8 +52,6 @@ void ThunderBallApp::initialize(ScopeStack& scope, RenderDevice& renderDevice)
 	uint32_t numTextures = resourceManager->m_numTextures;
 	Texture **textures = resourceManager->m_textures;
 
-	renderDevice.createUniformBuffers(scope);
-
 	const uint32_t kNumMeshInstances = 3;
 	m_scene = scope.newObject<Scene>(scope, renderDevice, kNumMeshInstances);
 
@@ -93,6 +91,32 @@ void ThunderBallApp::initialize(ScopeStack& scope, RenderDevice& renderDevice)
 
 void ThunderBallApp::update(ScopeStack& scope, RenderDevice& renderDevice)
 {
+	glm::vec3 eye(0.0f, 0.0f, 2.5f);
+	glm::vec3 at(0.0f, 0.0f, 0.0f);
+	glm::vec3 up(0.0f, 1.0f, 0.0f);
+	glm::mat4x4 viewMatrix = glm::lookAt(eye, at, up);
+
+	Application* app = Application::GetApplication();
+
+	const float fov = glm::radians(90.0f);
+	const float aspectRatio = (float)app->getScreenHeight() / (float)app->getScreenWidth();
+	const float nearZ = 0.1f;
+	const float farZ = 100.0f;
+	const float focalLength = 1.0f / tanf(fov * 0.5f);
+
+	float left = -nearZ / focalLength;
+	float right = nearZ / focalLength;
+	float bottom = -aspectRatio * nearZ / focalLength;
+	float top = aspectRatio * nearZ / focalLength;
+
+	glm::mat4x4 projectionMatrix = glm::frustum(left, right, bottom, top, nearZ, farZ);
+
+	SceneUniformData *sceneUniformData = static_cast<SceneUniformData *>(m_scene->m_sceneUniformBuffer->mapMemory());
+	sceneUniformData->viewMatrix = viewMatrix;
+	sceneUniformData->projectionMatrix = projectionMatrix;
+	sceneUniformData->viewProjectionMatrix = projectionMatrix * viewMatrix;
+	m_scene->m_sceneUniformBuffer->unmapMemory();
+
 	static float angle = 0.0f;
 	uint32_t numMeshes = m_scene->m_meshInstanceCount;
 
