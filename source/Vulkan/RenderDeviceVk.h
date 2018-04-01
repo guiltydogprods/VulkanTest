@@ -69,6 +69,7 @@ struct RenderDevice
 	void finalize(ScopeStack& scope, Scene& scene, Texture **textures, uint32_t numTextures);
 	void cleanup();
 	void render(ScopeStack& scope);
+	void present(ScopeStack& scope);
 
 	void cleanupSwapChain();
 	void createInstance();
@@ -135,6 +136,7 @@ struct RenderDevice
 	uint32_t							m_vkSwapChainImageCount;
 	RenderTarget						**m_swapChainRenderTargets;
 	VkFramebuffer						*m_vkSwapChainFramebuffers;
+	uint32_t							m_backBufferIndex;
 
 	VkRenderPass						m_vkRenderPass;
 

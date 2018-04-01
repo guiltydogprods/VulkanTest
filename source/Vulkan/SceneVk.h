@@ -27,6 +27,9 @@ struct Scene
 	Buffer		*m_sceneUniformBuffer;
 	Buffer		*m_modelMatrixUniformBuffer;
 
+	VkPipelineLayout m_vkPipelineLayout;
+	VkPipeline		 m_vkGraphicsPipeline;
+
 	uint32_t m_capacity;
 	uint32_t m_meshInstanceCount;
 	uint32_t m_renderableCount;

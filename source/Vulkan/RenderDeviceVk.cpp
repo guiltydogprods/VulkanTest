@@ -5,6 +5,8 @@
 #include "SceneVk.h"
 #include "TextureVk.h"
 
+#include "Internal/spirv_reflect.h"
+
 #include "../Framework/Mesh.h"
 
 //#define FORCE_NVIDIA
@@ -154,6 +156,7 @@ void RenderDevice::render(ScopeStack& scope)
 {
 	uint32_t imageIndex;
 	VkResult res = vkAcquireNextImageKHR(m_vkDevice, m_vkSwapChain, UINT64_MAX, m_vkImageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
+	m_backBufferIndex = imageIndex;
 
 	if (res == VK_ERROR_OUT_OF_DATE_KHR)
 	{
@@ -201,7 +204,7 @@ void RenderDevice::render(ScopeStack& scope)
 	}
 
 	vkDestroyFence(m_vkDevice, fence, nullptr);
-
+/*
 	VkPresentInfoKHR presentInfo = {};
 	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 	presentInfo.waitSemaphoreCount = 1;
@@ -212,6 +215,29 @@ void RenderDevice::render(ScopeStack& scope)
 	presentInfo.pImageIndices = &imageIndex;
 
 	res = vkQueuePresentKHR(m_vkPresentQueue, &presentInfo);
+	if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR)
+	{
+		recreateSwapChain(scope);
+	}
+	else if (res != VK_SUCCESS)
+	{
+		print("failed to present swap chain image!");
+	}
+*/
+}
+
+void RenderDevice::present(ScopeStack& scope)
+{
+	VkPresentInfoKHR presentInfo = {};
+	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+	presentInfo.waitSemaphoreCount = 1;
+	presentInfo.pWaitSemaphores = &m_vkRenderingFinishedSemaphore;
+
+	presentInfo.swapchainCount = 1;
+	presentInfo.pSwapchains = &m_vkSwapChain;
+	presentInfo.pImageIndices = &m_backBufferIndex;
+
+	VkResult res = vkQueuePresentKHR(m_vkPresentQueue, &presentInfo);
 	if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR)
 	{
 		recreateSwapChain(scope);
@@ -927,22 +953,17 @@ void RenderDevice::createGraphicsPipeline(ScopeStack& scope)
 
 void RenderDevice::createDescriptorSet(Scene& scene)
 {
-//	VkDescriptorPoolSize poolSizes[4] = {};
 	VkDescriptorPoolSize poolSizes[3] = {};
 	poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	poolSizes[0].descriptorCount = 1;
 	poolSizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	poolSizes[1].descriptorCount = 1;
-//	poolSizes[2].type = VK_DESCRIPTOR_TYPE_SAMPLER;
-//	poolSizes[2].descriptorCount = 2;
-//	poolSizes[3].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-//	poolSizes[3].descriptorCount = 2;
 	poolSizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	poolSizes[2].descriptorCount = 3;
 
 	VkDescriptorPoolCreateInfo createInfo = {};
 	createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	createInfo.poolSizeCount = 3;	//4
+	createInfo.poolSizeCount = 3;
 	createInfo.pPoolSizes = poolSizes;
 	createInfo.maxSets = 1;
 
@@ -1217,6 +1238,41 @@ VkShaderModule RenderDevice::createShaderModule(ScopeStack& scope,  const char *
 	createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 	createInfo.codeSize = file.m_sizeInBytes;
 	createInfo.pCode = reinterpret_cast<uint32_t *>(file.m_buffer);
+
+#if 0
+	{
+		SpvReflectShaderModule module;
+		SpvReflectResult result = spvReflectCreateShaderModule(createInfo.codeSize, createInfo.pCode, &module);
+		AssertMsg((result == SPV_REFLECT_RESULT_SUCCESS), "Failed to create SPIRV-Reflect Module.\n");
+
+		// Enumerate and extract shader's input variables
+/*
+		uint32_t inputVariableCount = 0;
+		result = spvReflectEnumerateInputVariables(&module, &inputVariableCount, NULL);
+		assert(result == SPV_REFLECT_RESULT_SUCCESS);
+		SpvReflectInterfaceVariable* inputVariables = (SpvReflectInterfaceVariable*)scope.allocate(inputVariableCount * sizeof(SpvReflectInterfaceVariable));
+		result = spvReflectEnumerateInputVariables(&module, &inputVariableCount, inputVariables);
+		assert(result == SPV_REFLECT_RESULT_SUCCESS);
+
+		uint32_t outputVariableCount = 0;
+		result = spvReflectEnumerateOutputVariables(&module, &outputVariableCount, NULL);
+		assert(result == SPV_REFLECT_RESULT_SUCCESS);
+		SpvReflectInterfaceVariable* outputVariables = (SpvReflectInterfaceVariable*)scope.allocate(outputVariableCount * sizeof(SpvReflectInterfaceVariable));
+		result = spvReflectEnumerateOutputVariables(&module, &outputVariableCount, outputVariables);
+		assert(result == SPV_REFLECT_RESULT_SUCCESS);
+*/
+		uint32_t descriptorBindingCount = 0;
+		spvReflectEnumerateDescriptorSets(&module, &descriptorBindingCount, NULL);
+		SpvReflectDescriptorSet* descriptorBindings = (SpvReflectDescriptorSet*)scope.allocate(descriptorBindingCount * sizeof(SpvReflectDescriptorSet));
+		result = spvReflectEnumerateDescriptorSets(&module, &descriptorBindingCount, &descriptorBindings);
+
+		// Output variables, descriptor bindings, descriptor sets, and push constants
+		// can be enumerated and extracted using a similar mechanism.
+
+		// Destroy the reflection data when no longer required.
+		spvReflectDestroyShaderModule(&module);
+	}
+#endif
 
 	VkShaderModule shaderModule;
 	if (vkCreateShaderModule(m_vkDevice, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)

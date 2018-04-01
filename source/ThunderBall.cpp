@@ -91,7 +91,12 @@ void ThunderBallApp::initialize(ScopeStack& scope, RenderDevice& renderDevice)
 
 void ThunderBallApp::update(ScopeStack& scope, RenderDevice& renderDevice)
 {
-	glm::vec3 eye(0.0f, 0.0f, 2.5f);
+	static float angle = 0.0f;
+	float sina = 2.5f * sinf(glm::radians(angle));
+	float cosa = 2.5f * cosf(glm::radians(angle));
+
+//	glm::vec3 eye(0.0f, 0.0f, 2.5f);
+	glm::vec3 eye(sina, 0.0f, cosa);
 	glm::vec3 at(0.0f, 0.0f, 0.0f);
 	glm::vec3 up(0.0f, 1.0f, 0.0f);
 	glm::mat4x4 viewMatrix = glm::lookAt(eye, at, up);
@@ -117,7 +122,6 @@ void ThunderBallApp::update(ScopeStack& scope, RenderDevice& renderDevice)
 	sceneUniformData->viewProjectionMatrix = projectionMatrix * viewMatrix;
 	m_scene->m_sceneUniformBuffer->unmapMemory();
 
-	static float angle = 0.0f;
 	uint32_t numMeshes = m_scene->m_meshInstanceCount;
 
 	glm::mat4x4 *instanceMatrices = static_cast<glm::mat4x4 *>(m_scene->m_modelMatrixUniformBuffer->mapMemory());
@@ -139,4 +143,6 @@ void ThunderBallApp::update(ScopeStack& scope, RenderDevice& renderDevice)
 void ThunderBallApp::render(ScopeStack& frameScope, RenderDevice& renderDevice)
 {
 	m_scene->render(frameScope);
+
+	renderDevice.present(frameScope);
 }
