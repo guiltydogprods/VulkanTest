@@ -142,7 +142,12 @@ void ThunderBallApp::update(ScopeStack& scope, RenderDevice& renderDevice)
 
 void ThunderBallApp::render(ScopeStack& frameScope, RenderDevice& renderDevice)
 {
-	m_scene->render(frameScope);
-
-	renderDevice.present(frameScope);
+	uint32_t backBufferIndex;
+	if (renderDevice.getBackBufferIndex(frameScope, backBufferIndex))
+	{
+		VkCommandBuffer commandBuffer = renderDevice.getCommandBuffer(backBufferIndex);
+//		m_scene->render(frameScope, backBufferIndex);
+		renderDevice.submit(commandBuffer, &renderDevice.m_vkImageAvailableSemaphore, &renderDevice.m_vkRenderingFinishedSemaphore);
+		renderDevice.present(frameScope, backBufferIndex);
+	}
 }

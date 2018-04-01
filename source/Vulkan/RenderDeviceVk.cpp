@@ -152,37 +152,45 @@ void RenderDevice::cleanup()
 	vkDestroyInstance(m_vkInstance, nullptr);
 }
 
-void RenderDevice::render(ScopeStack& scope)
+bool RenderDevice::getBackBufferIndex(ScopeStack& scope, uint32_t& backBufferIndex)
 {
-	uint32_t imageIndex;
-	VkResult res = vkAcquireNextImageKHR(m_vkDevice, m_vkSwapChain, UINT64_MAX, m_vkImageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
-	m_backBufferIndex = imageIndex;
-
+	VkResult res = vkAcquireNextImageKHR(m_vkDevice, m_vkSwapChain, UINT64_MAX, m_vkImageAvailableSemaphore, VK_NULL_HANDLE, &backBufferIndex);
 	if (res == VK_ERROR_OUT_OF_DATE_KHR)
 	{
 		recreateSwapChain(scope);
-		return;
+		return false;
 	}
-	else if (res != VK_SUCCESS && res != VK_SUBOPTIMAL_KHR) 
+	else if (res != VK_SUCCESS && res != VK_SUBOPTIMAL_KHR)
 	{
 		print("failed to acquire image\n");
-//		exit(EXIT_FAILURE);
+		return false;
 	}
+	return true;
+}
 
+VkCommandBuffer RenderDevice::getCommandBuffer(uint32_t backBufferIndex)
+{
+	return m_vkCommandBuffers[backBufferIndex];
+}
+
+void RenderDevice::submit(VkCommandBuffer commandBuffer, VkSemaphore *waitSemaphore, VkSemaphore *signalSemaphore)
+{
 	VkSubmitInfo submitInfo = {};
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-
-	submitInfo.waitSemaphoreCount = 1;
-	submitInfo.pWaitSemaphores = &m_vkImageAvailableSemaphore;
-
-	submitInfo.signalSemaphoreCount = 1;
-	submitInfo.pSignalSemaphores = &m_vkRenderingFinishedSemaphore;
-
+	if (waitSemaphore)
+	{
+		submitInfo.waitSemaphoreCount = 1;
+		submitInfo.pWaitSemaphores = waitSemaphore;
+	}
+	if (signalSemaphore)
+	{
+		submitInfo.signalSemaphoreCount = 1;
+		submitInfo.pSignalSemaphores = &m_vkRenderingFinishedSemaphore;
+	}
 	VkPipelineStageFlags waitDstStageMask = VK_PIPELINE_STAGE_TRANSFER_BIT;
 	submitInfo.pWaitDstStageMask = &waitDstStageMask;
-
 	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &m_vkCommandBuffers[imageIndex];
+	submitInfo.pCommandBuffers = &commandBuffer;
 
 	VkFence fence;
 	VkFenceCreateInfo fenceCreateInfo = {};
@@ -191,42 +199,21 @@ void RenderDevice::render(ScopeStack& scope)
 	{
 		print("failed to create fence.\n");
 	}
-	res = vkQueueSubmit(m_vkPresentQueue, 1, &submitInfo, fence);
+	VkResult res = vkQueueSubmit(m_vkPresentQueue, 1, &submitInfo, fence);
 	if (res != VK_SUCCESS)
 	{
 		print("failed to submit draw command buffer\n");
-//		exit(EXIT_FAILURE);
+		//		exit(EXIT_FAILURE);
 	}
 
 	if (vkWaitForFences(m_vkDevice, 1, &fence, VK_TRUE, kDefaultFenceTimeout) != VK_SUCCESS)
 	{
 		print("failed to wait on fence.\n");
 	}
-
 	vkDestroyFence(m_vkDevice, fence, nullptr);
-/*
-	VkPresentInfoKHR presentInfo = {};
-	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-	presentInfo.waitSemaphoreCount = 1;
-	presentInfo.pWaitSemaphores = &m_vkRenderingFinishedSemaphore;
-
-	presentInfo.swapchainCount = 1;
-	presentInfo.pSwapchains = &m_vkSwapChain;
-	presentInfo.pImageIndices = &imageIndex;
-
-	res = vkQueuePresentKHR(m_vkPresentQueue, &presentInfo);
-	if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR)
-	{
-		recreateSwapChain(scope);
-	}
-	else if (res != VK_SUCCESS)
-	{
-		print("failed to present swap chain image!");
-	}
-*/
 }
 
-void RenderDevice::present(ScopeStack& scope)
+void RenderDevice::present(ScopeStack& scope, uint32_t backBufferIndex)
 {
 	VkPresentInfoKHR presentInfo = {};
 	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -235,7 +222,7 @@ void RenderDevice::present(ScopeStack& scope)
 
 	presentInfo.swapchainCount = 1;
 	presentInfo.pSwapchains = &m_vkSwapChain;
-	presentInfo.pImageIndices = &m_backBufferIndex;
+	presentInfo.pImageIndices = &backBufferIndex;
 
 	VkResult res = vkQueuePresentKHR(m_vkPresentQueue, &presentInfo);
 	if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR)

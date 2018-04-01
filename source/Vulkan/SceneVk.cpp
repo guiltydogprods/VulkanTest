@@ -48,5 +48,4 @@ void Scene::update(ScopeStack& scope)
 
 void Scene::render(ScopeStack& scope)
 {
-	m_renderDevice.render(scope);
 }

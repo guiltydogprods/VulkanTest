@@ -68,8 +68,8 @@ struct RenderDevice
 	void initialize(ScopeStack& scope, GLFWwindow *window);
 	void finalize(ScopeStack& scope, Scene& scene, Texture **textures, uint32_t numTextures);
 	void cleanup();
-	void render(ScopeStack& scope);
-	void present(ScopeStack& scope);
+	void submit(VkCommandBuffer commandBuffer, VkSemaphore *waitSemaphore = nullptr, VkSemaphore *signalSemaphore = nullptr);
+	void present(ScopeStack& scope, uint32_t backBufferIndex);
 
 	void cleanupSwapChain();
 	void createInstance();
@@ -88,6 +88,9 @@ struct RenderDevice
 	void createCommandBuffers(Scene& scene);
 	void recreateSwapChain(ScopeStack& scope);
 	void recreateDepthBuffer();
+
+	bool getBackBufferIndex(ScopeStack& scope, uint32_t& backBufferIndex);
+	VkCommandBuffer getCommandBuffer(uint32_t backBufferIndex);
 
 	int32_t getMemoryType(uint32_t typeBits, VkFlags properties);
 	VkDeviceMemory allocateGpuMemory(VkDeviceSize size, VkDeviceSize alignment, uint32_t typeIndex);
