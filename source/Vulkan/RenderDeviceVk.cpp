@@ -5,8 +5,6 @@
 #include "SceneVk.h"
 #include "TextureVk.h"
 
-#include "Internal/spirv_reflect.h"
-
 #include "../Framework/Mesh.h"
 
 //#define FORCE_NVIDIA
