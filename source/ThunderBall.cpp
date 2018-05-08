@@ -95,8 +95,8 @@ void ThunderBallApp::update(ScopeStack& scope, RenderDevice& renderDevice)
 	float sina = 2.5f * sinf(glm::radians(angle));
 	float cosa = 2.5f * cosf(glm::radians(angle));
 
-//	glm::vec3 eye(0.0f, 0.0f, 2.5f);
-	glm::vec3 eye(sina, 0.0f, fabsf(cosa));
+	glm::vec3 eye(0.0f, 0.0f, 2.5f);
+//	glm::vec3 eye(sina, 0.0f, fabsf(cosa));
 	glm::vec3 at(0.0f, 0.0f, 0.0f);
 	glm::vec3 up(0.0f, 1.0f, 0.0f);
 	glm::mat4x4 viewMatrix = glm::lookAt(eye, at, up);

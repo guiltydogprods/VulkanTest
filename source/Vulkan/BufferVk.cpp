@@ -5,7 +5,7 @@
 Buffer::Buffer(ScopeStack& scope, RenderDevice& renderDevice, VkDeviceSize size, VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags)
 	: m_renderDevice(renderDevice)
 	, m_buffer(nullptr)
-	, m_memAllocInfo{ nullptr, 0 }
+	, m_memAllocInfo{_dummyMemAllocInfo }
 	, m_allocatedSize(0)
 	, m_usageFlags(usageFlags)
 	, m_memoryPropertyFlags(memoryPropertyFlags)
