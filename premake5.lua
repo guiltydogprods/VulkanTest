@@ -36,6 +36,7 @@ project "ThunderBall"
    files 
    { 
       "source/**.h", 
+      "source/**.c",
       "source/**.cpp",
       "shaders/**.vert",   
       "shaders/**.frag",     

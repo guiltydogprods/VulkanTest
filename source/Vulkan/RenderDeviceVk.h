@@ -6,6 +6,7 @@ struct GPUMemAllocInfo;
 struct GPUMemoryBlock;
 struct MemorySubBlock;
 struct RenderTarget;
+struct Scene;
 struct Texture;
 
 const uint32_t kMaxGPUMemoryBlocks = 16;
@@ -65,10 +66,10 @@ struct RenderDevice
 	};
 
 	void initialize(ScopeStack& scope, GLFWwindow *window);
-	void finalize(ScopeStack& scope, Mesh **meshes, uint32_t numMeshes, Texture **textures, uint32_t numTextures);
+	void finalize(ScopeStack& scope, Scene& scene, Texture **textures, uint32_t numTextures);
 	void cleanup();
-	void update();
-	void render(ScopeStack& scope);
+	void submit(VkCommandBuffer commandBuffer, VkSemaphore *waitSemaphore = nullptr, VkSemaphore *signalSemaphore = nullptr);
+	void present(ScopeStack& scope, uint32_t backBufferIndex);
 
 	void cleanupSwapChain();
 	void createInstance();
@@ -78,16 +79,18 @@ struct RenderDevice
 	void createCommandPool();
 	void createDepthBuffer(ScopeStack& scope);
 	void createVertexFormat(ScopeStack& scope);
-	void createUniformBuffers(ScopeStack& scope);
 	void createSwapChain(ScopeStack& scope);
 	void createSwapChain(ScopeStack* scope = nullptr);
 	void createRenderPass();
 	void createFramebuffers();
 	void createGraphicsPipeline(ScopeStack& scope);
-	void createDescriptorSet();
-	void createCommandBuffers(Mesh **meshes, uint32_t numMeshes);
+	void createDescriptorSet(Scene& scene);
+	void createCommandBuffers(Scene& scene);
 	void recreateSwapChain(ScopeStack& scope);
 	void recreateDepthBuffer();
+
+	bool getBackBufferIndex(ScopeStack& scope, uint32_t& backBufferIndex);
+	VkCommandBuffer getCommandBuffer(uint32_t backBufferIndex);
 
 	int32_t getMemoryType(uint32_t typeBits, VkFlags properties);
 	VkDeviceMemory allocateGpuMemory(VkDeviceSize size, VkDeviceSize alignment, uint32_t typeIndex);
@@ -125,8 +128,6 @@ struct RenderDevice
 
 	Buffer								*m_vertexBuffer;
 	Buffer								*m_indexBuffer;
-	Buffer								*m_sceneUniformBuffer;
-	Buffer								*m_modelMatrixUniformBuffer;
 
 	VkVertexInputBindingDescription		m_vkVertexBindingDescription;
 	uint32_t							m_vkVertexAttributeDescriptionCount;
@@ -138,6 +139,7 @@ struct RenderDevice
 	uint32_t							m_vkSwapChainImageCount;
 	RenderTarget						**m_swapChainRenderTargets;
 	VkFramebuffer						*m_vkSwapChainFramebuffers;
+	uint32_t							m_backBufferIndex;
 
 	VkRenderPass						m_vkRenderPass;
 
@@ -153,11 +155,11 @@ struct RenderDevice
 
 	RenderTarget						*m_depthRenderTarget;
 	RenderTarget						*m_aaRenderTarget;
-	RenderTarget						*m_aaDepthRenderTarget;;
+	RenderTarget						*m_aaDepthRenderTarget;
 
-	Mesh								**m_meshes;
+	Texture								*m_dummyTexture;
+	Scene								*m_scene;
 	Texture								**m_textures;
-	uint32_t							m_numMeshes;
 	uint32_t							m_numTextures;
 
 	uint32_t							m_maxWidth;

@@ -50,7 +50,15 @@ struct DDS_HEADER
 struct Texture
 {
 	Texture(ScopeStack& scope, RenderDevice& renderDevice, const char *filename);
+	Texture(ScopeStack& scope, RenderDevice& renderDevice, uint32_t width, uint32_t height, VkFormat format);
 	~Texture();
+
+	void createImage(uint32_t width, uint32_t height, uint32_t mipmapCount, VkFormat format, VkImageCreateInfo& imageCreateInfo);
+	void allocate(ScopeStack& scope, const VkImageCreateInfo& imageCreateInfo);
+	void createImageView(VkFormat format, const VkImageSubresourceRange& subresourceRange);
+	void createSampler(uint32_t mipmapCount);
+
+	uint32_t calcNumMips(uint32_t width, uint32_t height);
 
 	RenderDevice&	m_renderDevice;
 	VkImage			m_vkImage;

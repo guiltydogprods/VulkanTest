@@ -28,7 +28,7 @@ Texture::Texture(ScopeStack& scope, RenderDevice& renderDevice, const char *file
 	uint32_t texWidth = header->dwWidth;
 	uint32_t linearSize = header->dwPitchOrLinearSize;
 	uint32_t texDepth = header->dwDepth;
-	uint32_t mipMapCount = header->dwMipMapCount;
+	uint32_t mipmapCount = header->dwMipMapCount;
 	uint32_t fourCC = header->ddspf.dwFourCC;
 
 	uint32_t components = (fourCC == FOURCC_DXT1) ? 3 : 4;
@@ -63,12 +63,12 @@ Texture::Texture(ScopeStack& scope, RenderDevice& renderDevice, const char *file
 	}
 
 	// Setup buffer copy regions for each mip level
-	VkBufferImageCopy *bufferCopyRegions = static_cast<VkBufferImageCopy *>(alloca(sizeof(VkBufferImageCopy) * mipMapCount));
-	memset(bufferCopyRegions, 0, sizeof(VkBufferImageCopy) * mipMapCount);
+	VkBufferImageCopy *bufferCopyRegions = static_cast<VkBufferImageCopy *>(alloca(sizeof(VkBufferImageCopy) * mipmapCount));
+	memset(bufferCopyRegions, 0, sizeof(VkBufferImageCopy) * mipmapCount);
 	uint32_t offset = 0;
 	uint32_t mipWidth = texWidth;
 	uint32_t mipHeight = texHeight;
-	for (uint32_t i = 0; i < mipMapCount && (mipWidth || mipHeight); i++)
+	for (uint32_t i = 0; i < mipmapCount && (mipWidth || mipHeight); i++)
 	{
 		uint32_t regionSize = ((mipWidth + 3) / 4) * ((mipHeight + 3) / 4) * blockSize;
 
@@ -87,15 +87,73 @@ Texture::Texture(ScopeStack& scope, RenderDevice& renderDevice, const char *file
 	}
 
 	VkImageCreateInfo  imageCreateInfo = {};
+	createImage(texWidth, texHeight, mipmapCount, format, imageCreateInfo);
+	allocate(scope, imageCreateInfo);
+
+	VkImageSubresourceRange subresourceRange = {};
+	subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	subresourceRange.baseMipLevel = 0;
+	subresourceRange.levelCount = mipmapCount;
+	subresourceRange.layerCount = 1;
+
+	VkCommandBuffer commandBuffer = renderDevice.beginSingleUseCommandBuffer();
+	renderDevice.transitionImageLayout(commandBuffer, m_vkImage, subresourceRange, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	// Copy mip levels from staging buffer
+	vkCmdCopyBufferToImage(commandBuffer, stagingBuffer.m_buffer, m_vkImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipmapCount, bufferCopyRegions);
+	renderDevice.transitionImageLayout(commandBuffer, m_vkImage, subresourceRange, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	renderDevice.endSingleUseCommandBuffer(commandBuffer);
+
+	createImageView(format, subresourceRange);
+	createSampler(mipmapCount);
+}
+
+Texture::Texture(ScopeStack& scope, RenderDevice& renderDevice, uint32_t width, uint32_t height, VkFormat format) 
+	: m_renderDevice(renderDevice)
+	, m_vkImage(nullptr)
+	, m_vkImageView(nullptr)
+	, m_memAllocInfo{ _dummyMemAllocInfo }
+{
+	uint32_t mipmapCount = calcNumMips(width, height);
+
+	VkImageCreateInfo  imageCreateInfo = {};
+	createImage(width, height, mipmapCount, format, imageCreateInfo);
+	allocate(scope, imageCreateInfo);
+
+	VkImageSubresourceRange subresourceRange = {};
+	subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	subresourceRange.baseMipLevel = 0;
+	subresourceRange.levelCount = mipmapCount;
+	subresourceRange.layerCount = 1;
+
+	//	VkCommandBuffer commandBuffer = renderDevice.beginSingleUseCommandBuffer();
+	//	renderDevice.transitionImageLayout(commandBuffer, m_vkImage, subresourceRange, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	// Copy mip levels from staging buffer
+	//	vkCmdCopyBufferToImage(commandBuffer, stagingBuffer.m_buffer, m_vkImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipMapCount, bufferCopyRegions);
+	//	renderDevice.transitionImageLayout(commandBuffer, m_vkImage, subresourceRange, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	//	renderDevice.endSingleUseCommandBuffer(commandBuffer);
+
+	createImageView(format, subresourceRange);
+	createSampler(mipmapCount);
+}
+
+Texture::~Texture()
+{
+	vkDestroySampler(m_renderDevice.m_vkDevice, m_vkSampler, nullptr);
+	vkDestroyImageView(m_renderDevice.m_vkDevice, m_vkImageView, nullptr);
+	vkDestroyImage(m_renderDevice.m_vkDevice, m_vkImage, nullptr);
+}
+
+void Texture::createImage(uint32_t width, uint32_t height, uint32_t mipmapCount, VkFormat format, VkImageCreateInfo& imageCreateInfo)
+{
 	imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 	imageCreateInfo.pNext = nullptr;
 	imageCreateInfo.flags = 0;
 	imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
 	imageCreateInfo.format = format;
-	imageCreateInfo.extent.width = texWidth;
-	imageCreateInfo.extent.height = texHeight;
+	imageCreateInfo.extent.width = width;
+	imageCreateInfo.extent.height = height;
 	imageCreateInfo.extent.depth = 1;
-	imageCreateInfo.mipLevels = mipMapCount;
+	imageCreateInfo.mipLevels = mipmapCount;
 	imageCreateInfo.arrayLayers = 1;
 	imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
 	imageCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
@@ -104,50 +162,44 @@ Texture::Texture(ScopeStack& scope, RenderDevice& renderDevice, const char *file
 	imageCreateInfo.queueFamilyIndexCount = 0;
 	imageCreateInfo.pQueueFamilyIndices = nullptr;
 	imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	if (vkCreateImage(renderDevice.m_vkDevice, &imageCreateInfo, nullptr, &m_vkImage) != VK_SUCCESS)
+	if (vkCreateImage(m_renderDevice.m_vkDevice, &imageCreateInfo, nullptr, &m_vkImage) != VK_SUCCESS)
 	{
-		print("failed to create image for %s\n", filename);
+		print("failed to create empty image.\n");
 		exit(1);
 	}
+}
 
+void Texture::allocate(ScopeStack& scope, const VkImageCreateInfo& imageCreateInfo)
+{
 	VkMemoryRequirements memRequirements;
-	vkGetImageMemoryRequirements(renderDevice.m_vkDevice, m_vkImage, &memRequirements);
+	vkGetImageMemoryRequirements(m_renderDevice.m_vkDevice, m_vkImage, &memRequirements);
 
-	uint32_t memoryTypeIndex = renderDevice.getMemoryType(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	uint32_t memoryTypeIndex = m_renderDevice.getMemoryType(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 	m_memAllocInfo = RenderDevice::GPUMemoryManager::Instance().allocate(scope, memRequirements.size, memRequirements.alignment, imageCreateInfo.tiling == VK_IMAGE_TILING_OPTIMAL ? (1 << 8) | memoryTypeIndex : memoryTypeIndex);
-	if (vkBindImageMemory(renderDevice.m_vkDevice, m_vkImage, m_memAllocInfo.get().memoryBlock.m_memory, m_memAllocInfo.get().offset) != VK_SUCCESS)
+	if (vkBindImageMemory(m_renderDevice.m_vkDevice, m_vkImage, m_memAllocInfo.get().memoryBlock.m_memory, m_memAllocInfo.get().offset) != VK_SUCCESS)
 	{
 		print("failed to bind memory to image\n");
 		exit(1);
 	}
+}
 
-	VkCommandBuffer commandBuffer = renderDevice.beginSingleUseCommandBuffer();
-
-	VkImageSubresourceRange subresourceRange = {};
-	subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	subresourceRange.baseMipLevel = 0;
-	subresourceRange.levelCount = mipMapCount;
-	subresourceRange.layerCount = 1;
-
-	renderDevice.transitionImageLayout(commandBuffer, m_vkImage, subresourceRange, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-	// Copy mip levels from staging buffer
-	vkCmdCopyBufferToImage(commandBuffer, stagingBuffer.m_buffer, m_vkImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipMapCount, bufferCopyRegions);
-	renderDevice.transitionImageLayout(commandBuffer, m_vkImage, subresourceRange, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-	renderDevice.endSingleUseCommandBuffer(commandBuffer);
-
+void Texture::createImageView(VkFormat format, const VkImageSubresourceRange& subresourceRange)
+{
 	VkImageViewCreateInfo viewInfo = {};
 	viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 	viewInfo.image = m_vkImage;
 	viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
 	viewInfo.format = format;
 	viewInfo.subresourceRange = subresourceRange;
-	if (vkCreateImageView(renderDevice.m_vkDevice, &viewInfo, nullptr, &m_vkImageView) != VK_SUCCESS)
+	if (vkCreateImageView(m_renderDevice.m_vkDevice, &viewInfo, nullptr, &m_vkImageView) != VK_SUCCESS)
 	{
 		print("failed to create image view\n");
 		exit(EXIT_FAILURE);
 	}
+}
 
+void Texture::createSampler(uint32_t mipmapCount)
+{
 	VkSamplerCreateInfo samplerInfo = {};
 	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
 	samplerInfo.magFilter = VK_FILTER_LINEAR;
@@ -155,7 +207,7 @@ Texture::Texture(ScopeStack& scope, RenderDevice& renderDevice, const char *file
 	samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
 	samplerInfo.mipLodBias = 0.0f;
 	samplerInfo.minLod = 0.0f;
-	samplerInfo.maxLod = (float)mipMapCount;
+	samplerInfo.maxLod = static_cast<float>(mipmapCount);
 	samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 	samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 	samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
@@ -165,16 +217,21 @@ Texture::Texture(ScopeStack& scope, RenderDevice& renderDevice, const char *file
 	samplerInfo.unnormalizedCoordinates = VK_FALSE;
 	samplerInfo.compareEnable = VK_FALSE;
 	samplerInfo.compareOp = VK_COMPARE_OP_NEVER;
-	if (vkCreateSampler(renderDevice.m_vkDevice, &samplerInfo, nullptr, &m_vkSampler) != VK_SUCCESS)
+	if (vkCreateSampler(m_renderDevice.m_vkDevice, &samplerInfo, nullptr, &m_vkSampler) != VK_SUCCESS)
 	{
 		print("failed to create sampler.\n");
 		exit(EXIT_FAILURE);
 	}
 }
 
-Texture::~Texture()
+uint32_t Texture::calcNumMips(uint32_t width, uint32_t height)
 {
-	vkDestroySampler(m_renderDevice.m_vkDevice, m_vkSampler, nullptr);
-	vkDestroyImageView(m_renderDevice.m_vkDevice, m_vkImageView, nullptr);
-	vkDestroyImage(m_renderDevice.m_vkDevice, m_vkImage, nullptr);
+	uint32_t maxDim = std::max(width, height);
+	if (maxDim == 0)
+		return 0;
+
+	uint32_t numMips = 1;
+	while (maxDim >>= 1)
+		++numMips;
+	return numMips;
 }

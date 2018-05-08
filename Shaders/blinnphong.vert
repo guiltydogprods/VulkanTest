@@ -28,7 +28,7 @@ layout(binding = 0) uniform SCENE_BLOCK
 
 layout (binding = 1) uniform MODEL_MATRIX_BLOCK
 {
-	mat4    model_matrix[2];
+	mat4    model_matrix[3];
 };
 
 layout (push_constant) uniform pushConstants_t

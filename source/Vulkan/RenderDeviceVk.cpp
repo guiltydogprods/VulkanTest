@@ -2,19 +2,13 @@
 #include "RenderDeviceVk.h"
 #include "BufferVk.h"
 #include "RenderTargetVk.h"
+#include "SceneVk.h"
 #include "TextureVk.h"
 
 #include "../Framework/Mesh.h"
 
 //#define FORCE_NVIDIA
 //#define FORCE_INTEL
-
-#define GLM_FORCE_RADIANS
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#include "glm/glm.hpp"
-#include "glm/gtc/matrix_transform.hpp"
-#define GLM_ENABLE_EXPERIMENTAL
-#include "glm/gtx/transform.hpp"
 
 const char* validationLayers[] = 
 {
@@ -38,14 +32,7 @@ struct Vertex
 
 struct ModelUniformData
 {
-	glm::mat4x4 tranformationMatrix[2];
-};
-
-struct SceneUniformData
-{
-	glm::mat4x4 viewMatrix;
-	glm::mat4x4 projectionMatrix;
-	glm::mat4x4 viewProjectionMatrix;
+	glm::mat4x4 tranformationMatrix[3];
 };
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objType, uint64_t obj, size_t location, int32_t code, const char* layerPrefix, const char* msg, void* userData)
@@ -80,9 +67,9 @@ RenderDevice::RenderDevice(ScopeStack& scope, uint32_t maxWidth, uint32_t maxHei
 	, m_depthRenderTarget(nullptr)
 	, m_aaRenderTarget(nullptr)
 	, m_aaDepthRenderTarget(nullptr)
+	, m_scene(nullptr)
+	, m_textures(nullptr)
 	, m_numTextures(0)
-	, m_meshes(nullptr)
-	, m_numMeshes(0)
 	, m_maxWidth(maxWidth)
 	, m_maxHeight(maxHeight)
 {
@@ -108,19 +95,19 @@ void RenderDevice::initialize(ScopeStack& scope, GLFWwindow *window)
 //	m_depthRendereTarget = scope.newObject<RenderTarget>(scope, *this, m_maxWidth, m_maxHeight, VK_FORMAT_D32_SFLOAT, VK_SAMPLE_COUNT_1_BIT);
 	m_aaRenderTarget = scope.newObject<RenderTarget>(scope, *this, m_maxWidth, m_maxHeight, m_vkSwapChainFormat, VK_SAMPLE_COUNT_4_BIT);
 	m_aaDepthRenderTarget = scope.newObject<RenderTarget>(scope, *this, m_maxWidth, m_maxHeight, VK_FORMAT_D32_SFLOAT, VK_SAMPLE_COUNT_4_BIT);
+	m_dummyTexture = scope.newObject<Texture>(scope, *this, 1, 1, VK_FORMAT_R32_UINT);
 }
 
-void RenderDevice::finalize(ScopeStack& scope, Mesh **meshes, uint32_t numMeshes, Texture **textures, uint32_t numTextures)
+void RenderDevice::finalize(ScopeStack& scope, Scene& scene, Texture **textures, uint32_t numTextures)
 {
-	m_meshes = meshes;
-	m_numMeshes = numMeshes;
+	m_scene = &scene;
 	m_textures = textures;
 	m_numTextures = numTextures;
 	createRenderPass();
 	createFramebuffers();
 	createGraphicsPipeline(scope);
-	createDescriptorSet();
-	createCommandBuffers(meshes, numMeshes);
+	createDescriptorSet(scene);
+	createCommandBuffers(scene);
 }
 
 void RenderDevice::cleanupSwapChain()
@@ -163,81 +150,45 @@ void RenderDevice::cleanup()
 	vkDestroyInstance(m_vkInstance, nullptr);
 }
 
-void RenderDevice::update()
+bool RenderDevice::getBackBufferIndex(ScopeStack& scope, uint32_t& backBufferIndex)
 {
-	static float angle = 0.0f;
-
-	glm::vec3 axis(0.707f, 0.0f, 0.707f);
-	glm::vec3 axis2(-0.707f, 0.0f, -0.707f);
-	glm::mat4x4 modelMatrix = glm::translate(glm::vec3(-0.5f, 0.0f, 0.0f)) * glm::rotate(glm::radians(angle), axis);
-	glm::mat4x4 modelMatrix2 = glm::translate(glm::vec3(0.5f, 0.0f, 0.0f)) * glm::rotate(glm::radians(angle), axis2);
-
-	glm::vec3 eye(0.0f, 0.0f, 1.5f);
-	glm::vec3 at(0.0f, 0.0f, 0.0f);
-	glm::vec3 up(0.0f, 1.0f, 0.0f);
-	glm::mat4x4 viewMatrix = glm::lookAt(eye, at, up);
-
-	Application* app = Application::GetApplication();
-
-	const float fov = glm::radians(90.0f);
-	const float aspectRatio = (float)app->getScreenHeight() / (float)app->getScreenWidth();
-	const float nearZ = 0.1f;
-	const float farZ = 100.0f;
-	const float focalLength = 1.0f / tanf(fov * 0.5f);
-
-	float left = -nearZ / focalLength;
-	float right = nearZ / focalLength;
-	float bottom = -aspectRatio * nearZ / focalLength;
-	float top = aspectRatio * nearZ / focalLength;
-
-	glm::mat4x4 projectionMatrix = glm::frustum(left, right, bottom, top, nearZ, farZ);
-
-	SceneUniformData *sceneUniformData = static_cast<SceneUniformData *>(m_sceneUniformBuffer->mapMemory());
-	sceneUniformData->viewMatrix = viewMatrix;
-	sceneUniformData->projectionMatrix = projectionMatrix;
-	sceneUniformData->viewProjectionMatrix = projectionMatrix * viewMatrix;
-	m_sceneUniformBuffer->unmapMemory();
-
-	ModelUniformData *modelUniformData = static_cast<ModelUniformData *>(m_modelMatrixUniformBuffer->mapMemory());
-	modelUniformData->tranformationMatrix[0] = modelMatrix;
-	modelUniformData->tranformationMatrix[1] = modelMatrix2;
-	m_modelMatrixUniformBuffer->unmapMemory();
-
-	angle += 1.0f;
-	if (angle > 360.0f)
-		angle -= 360.0f;
-}
-
-void RenderDevice::render(ScopeStack& scope)
-{
-	uint32_t imageIndex;
-	VkResult res = vkAcquireNextImageKHR(m_vkDevice, m_vkSwapChain, UINT64_MAX, m_vkImageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
-
+	VkResult res = vkAcquireNextImageKHR(m_vkDevice, m_vkSwapChain, UINT64_MAX, m_vkImageAvailableSemaphore, VK_NULL_HANDLE, &backBufferIndex);
 	if (res == VK_ERROR_OUT_OF_DATE_KHR)
 	{
 		recreateSwapChain(scope);
-		return;
+		return false;
 	}
-	else if (res != VK_SUCCESS && res != VK_SUBOPTIMAL_KHR) 
+	else if (res != VK_SUCCESS && res != VK_SUBOPTIMAL_KHR)
 	{
 		print("failed to acquire image\n");
-//		exit(EXIT_FAILURE);
+		return false;
 	}
+	return true;
+}
 
+VkCommandBuffer RenderDevice::getCommandBuffer(uint32_t backBufferIndex)
+{
+	return m_vkCommandBuffers[backBufferIndex];
+}
+
+void RenderDevice::submit(VkCommandBuffer commandBuffer, VkSemaphore *waitSemaphore, VkSemaphore *signalSemaphore)
+{
 	VkSubmitInfo submitInfo = {};
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-
-	submitInfo.waitSemaphoreCount = 1;
-	submitInfo.pWaitSemaphores = &m_vkImageAvailableSemaphore;
-
-	submitInfo.signalSemaphoreCount = 1;
-	submitInfo.pSignalSemaphores = &m_vkRenderingFinishedSemaphore;
-
+	if (waitSemaphore)
+	{
+		submitInfo.waitSemaphoreCount = 1;
+		submitInfo.pWaitSemaphores = waitSemaphore;
+	}
+	if (signalSemaphore)
+	{
+		submitInfo.signalSemaphoreCount = 1;
+		submitInfo.pSignalSemaphores = &m_vkRenderingFinishedSemaphore;
+	}
 	VkPipelineStageFlags waitDstStageMask = VK_PIPELINE_STAGE_TRANSFER_BIT;
 	submitInfo.pWaitDstStageMask = &waitDstStageMask;
-
 	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &m_vkCommandBuffers[imageIndex];
+	submitInfo.pCommandBuffers = &commandBuffer;
 
 	VkFence fence;
 	VkFenceCreateInfo fenceCreateInfo = {};
@@ -246,20 +197,22 @@ void RenderDevice::render(ScopeStack& scope)
 	{
 		print("failed to create fence.\n");
 	}
-	res = vkQueueSubmit(m_vkPresentQueue, 1, &submitInfo, fence);
+	VkResult res = vkQueueSubmit(m_vkPresentQueue, 1, &submitInfo, fence);
 	if (res != VK_SUCCESS)
 	{
 		print("failed to submit draw command buffer\n");
-//		exit(EXIT_FAILURE);
+		//		exit(EXIT_FAILURE);
 	}
 
 	if (vkWaitForFences(m_vkDevice, 1, &fence, VK_TRUE, kDefaultFenceTimeout) != VK_SUCCESS)
 	{
 		print("failed to wait on fence.\n");
 	}
-
 	vkDestroyFence(m_vkDevice, fence, nullptr);
+}
 
+void RenderDevice::present(ScopeStack& scope, uint32_t backBufferIndex)
+{
 	VkPresentInfoKHR presentInfo = {};
 	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 	presentInfo.waitSemaphoreCount = 1;
@@ -267,9 +220,9 @@ void RenderDevice::render(ScopeStack& scope)
 
 	presentInfo.swapchainCount = 1;
 	presentInfo.pSwapchains = &m_vkSwapChain;
-	presentInfo.pImageIndices = &imageIndex;
+	presentInfo.pImageIndices = &backBufferIndex;
 
-	res = vkQueuePresentKHR(m_vkPresentQueue, &presentInfo);
+	VkResult res = vkQueuePresentKHR(m_vkPresentQueue, &presentInfo);
 	if (res == VK_ERROR_OUT_OF_DATE_KHR || res == VK_SUBOPTIMAL_KHR)
 	{
 		recreateSwapChain(scope);
@@ -562,15 +515,6 @@ void RenderDevice::createVertexFormat(ScopeStack& scope)
 	m_vkVertexAttributeDescriptions[2].offset = sizeof(float) * 6;
 }
 
-void RenderDevice::createUniformBuffers(ScopeStack& scopeStack)
-{
-	m_sceneUniformBuffer = scopeStack.newObject<Buffer>(scopeStack, *this, sizeof(SceneUniformData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-	m_sceneUniformBuffer->bindMemory();
-
-	m_modelMatrixUniformBuffer = scopeStack.newObject<Buffer>(scopeStack, *this, sizeof(ModelUniformData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-	m_modelMatrixUniformBuffer->bindMemory();
-}
-
 void RenderDevice::createSwapChain(ScopeStack& scope)
 {
 	createSwapChain(&scope);
@@ -661,7 +605,7 @@ void RenderDevice::recreateSwapChain(ScopeStack& scope)
 	createRenderPass();
 	createGraphicsPipeline(scope);
 	createFramebuffers();
-	createCommandBuffers(m_meshes, m_numMeshes);
+	createCommandBuffers(*m_scene);
 }
 
 void RenderDevice::createRenderPass()
@@ -679,43 +623,43 @@ void RenderDevice::createRenderPass()
 	aaColorAttachmentDescription.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	aaColorAttachmentDescription.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-	VkAttachmentDescription& colorAttachmentDescription = attachments[1];
-	colorAttachmentDescription.format = m_vkSwapChainFormat;
-	colorAttachmentDescription.samples = VK_SAMPLE_COUNT_1_BIT;
-	colorAttachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	colorAttachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-	colorAttachmentDescription.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	colorAttachmentDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	colorAttachmentDescription.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	colorAttachmentDescription.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-
-	VkAttachmentDescription& depthAttachmentDescription = attachments[2];
-	depthAttachmentDescription.format = m_aaDepthRenderTarget->m_vkFormat;
-	depthAttachmentDescription.samples = m_aaDepthRenderTarget->m_vkSamples;
-	depthAttachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	depthAttachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	depthAttachmentDescription.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	depthAttachmentDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	depthAttachmentDescription.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	depthAttachmentDescription.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
 	VkAttachmentReference aaColorAttachmentReference = {};
 	aaColorAttachmentReference.attachment = 0;
 	aaColorAttachmentReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-	VkAttachmentReference resolveAttachmentReference = {};
-	resolveAttachmentReference.attachment = 1;
-	resolveAttachmentReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	VkAttachmentDescription& aaDepthAttachmentDescription = attachments[1];
+	aaDepthAttachmentDescription.format = m_aaDepthRenderTarget->m_vkFormat;
+	aaDepthAttachmentDescription.samples = m_aaDepthRenderTarget->m_vkSamples;
+	aaDepthAttachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	aaDepthAttachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	aaDepthAttachmentDescription.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	aaDepthAttachmentDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	aaDepthAttachmentDescription.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	aaDepthAttachmentDescription.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-	VkAttachmentReference depthAttachmentReference = {};
-	depthAttachmentReference.attachment = 2;
-	depthAttachmentReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	VkAttachmentReference aaDepthAttachmentReference = {};
+	aaDepthAttachmentReference.attachment = 1;
+	aaDepthAttachmentReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+	VkAttachmentDescription& resolveAttachmentDescription = attachments[2];
+	resolveAttachmentDescription.format = m_vkSwapChainFormat;
+	resolveAttachmentDescription.samples = VK_SAMPLE_COUNT_1_BIT;
+	resolveAttachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	resolveAttachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	resolveAttachmentDescription.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	resolveAttachmentDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	resolveAttachmentDescription.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	resolveAttachmentDescription.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+	VkAttachmentReference resolveAttachmentReference = {};
+	resolveAttachmentReference.attachment = 2;
+	resolveAttachmentReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
 	VkSubpassDescription subPassDescription = {};
 	subPassDescription.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 	subPassDescription.colorAttachmentCount = 1;
 	subPassDescription.pColorAttachments = &aaColorAttachmentReference;
-	subPassDescription.pDepthStencilAttachment = &depthAttachmentReference;
+	subPassDescription.pDepthStencilAttachment = &aaDepthAttachmentReference;
 	subPassDescription.pResolveAttachments = &resolveAttachmentReference;
 
 	VkSubpassDependency dependencies[2];
@@ -761,7 +705,7 @@ void RenderDevice::createFramebuffers()
 {
 	for (uint32_t i = 0; i < m_vkSwapChainImageCount; i++)
 	{
-		VkImageView attachements[] = { m_aaRenderTarget->m_vkImageView, m_swapChainRenderTargets[i]->m_vkImageView, m_aaDepthRenderTarget->m_vkImageView };
+		VkImageView attachements[] = { m_aaRenderTarget->m_vkImageView, m_aaDepthRenderTarget->m_vkImageView, m_swapChainRenderTargets[i]->m_vkImageView };
 
 		VkFramebufferCreateInfo createInfo = {};
 		createInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -894,7 +838,7 @@ void RenderDevice::createGraphicsPipeline(ScopeStack& scope)
 	ubo2LayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	ubo2LayoutBinding.descriptorCount = 1;
 	ubo2LayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-
+/*
 	VkDescriptorSetLayoutBinding samplerLayoutBinding = {};
 	samplerLayoutBinding.binding = 2;
 	samplerLayoutBinding.descriptorCount = 2;
@@ -905,11 +849,21 @@ void RenderDevice::createGraphicsPipeline(ScopeStack& scope)
 	VkDescriptorSetLayoutBinding texturesLayoutBinding = {};
 	texturesLayoutBinding.binding = 3;
 	texturesLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-	texturesLayoutBinding.descriptorCount = 2;
+	texturesLayoutBinding.descriptorCount = 3;
 	texturesLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 	texturesLayoutBinding.pImmutableSamplers = nullptr;
 
-	VkDescriptorSetLayoutBinding bindings[] = { uboLayoutBinding, ubo2LayoutBinding, samplerLayoutBinding, texturesLayoutBinding };
+	VkDescriptorSetLayoutBinding bindings[] = { uboLayoutBinding, ubo2LayoutBinding, samplerLayoutBinding };	// , texturesLayoutBinding
+*/
+	VkDescriptorSetLayoutBinding textureLayoutBinding = {};
+	textureLayoutBinding.binding = 2;
+	textureLayoutBinding.descriptorCount = 3;
+	textureLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	textureLayoutBinding.pImmutableSamplers = nullptr;
+	textureLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+	VkDescriptorSetLayoutBinding bindings[] = { uboLayoutBinding, ubo2LayoutBinding, textureLayoutBinding };
+
 	VkDescriptorSetLayoutCreateInfo descriptorLayoutCreateInfo = {};
 	descriptorLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 	descriptorLayoutCreateInfo.bindingCount = sizeof(bindings) / sizeof(bindings[0]);
@@ -982,21 +936,19 @@ void RenderDevice::createGraphicsPipeline(ScopeStack& scope)
 	vkDestroyShaderModule(m_vkDevice, fragmentShaderModule, nullptr);
 }
 
-void RenderDevice::createDescriptorSet()
+void RenderDevice::createDescriptorSet(Scene& scene)
 {
-	VkDescriptorPoolSize poolSizes[4] = {};
+	VkDescriptorPoolSize poolSizes[3] = {};
 	poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	poolSizes[0].descriptorCount = 1;
 	poolSizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	poolSizes[1].descriptorCount = 1;
-	poolSizes[2].type = VK_DESCRIPTOR_TYPE_SAMPLER;
-	poolSizes[2].descriptorCount = 2;
-	poolSizes[3].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-	poolSizes[3].descriptorCount = 2;
+	poolSizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	poolSizes[2].descriptorCount = 3;
 
 	VkDescriptorPoolCreateInfo createInfo = {};
 	createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	createInfo.poolSizeCount = 4;
+	createInfo.poolSizeCount = 3;
 	createInfo.pPoolSizes = poolSizes;
 	createInfo.maxSets = 1;
 
@@ -1029,11 +981,11 @@ void RenderDevice::createDescriptorSet()
 
 	// Update descriptor set with uniform binding
 	VkDescriptorBufferInfo descriptorBufferInfo = {};
-	descriptorBufferInfo.buffer = m_sceneUniformBuffer->m_buffer;
+	descriptorBufferInfo.buffer = scene.m_sceneUniformBuffer->m_buffer;
 	descriptorBufferInfo.offset = 0;
 	descriptorBufferInfo.range = sizeof(SceneUniformData);
 
-	VkWriteDescriptorSet writeDescriptorSet[6] = {};
+	VkWriteDescriptorSet writeDescriptorSet[3] = {};
 	writeDescriptorSet[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	writeDescriptorSet[0].dstSet = m_vkDescriptorSet;
 	writeDescriptorSet[0].dstBinding = 0;
@@ -1043,7 +995,7 @@ void RenderDevice::createDescriptorSet()
 	writeDescriptorSet[0].pBufferInfo = &descriptorBufferInfo;
 
 	VkDescriptorBufferInfo descriptorBufferInfo2 = {};
-	descriptorBufferInfo2.buffer = m_modelMatrixUniformBuffer->m_buffer;
+	descriptorBufferInfo2.buffer = scene.m_modelMatrixUniformBuffer->m_buffer;
 	descriptorBufferInfo2.offset = 0;
 	descriptorBufferInfo2.range = sizeof(ModelUniformData);
 
@@ -1055,33 +1007,38 @@ void RenderDevice::createDescriptorSet()
 	writeDescriptorSet[1].descriptorCount = 1;
 	writeDescriptorSet[1].pBufferInfo = &descriptorBufferInfo2;
 
-	VkDescriptorImageInfo *imageInfo = static_cast<VkDescriptorImageInfo *>(alloca(sizeof(VkDescriptorImageInfo) * m_numTextures));
-	memset(imageInfo, 0, sizeof(VkDescriptorImageInfo) * m_numTextures);
+//	VkDescriptorImageInfo *imageInfo = static_cast<VkDescriptorImageInfo *>(alloca(sizeof(VkDescriptorImageInfo) * m_numTextures));
+//	memset(imageInfo, 0, sizeof(VkDescriptorImageInfo) * m_numTextures);
 
-	VkDescriptorImageInfo *texImageInfo = static_cast<VkDescriptorImageInfo *>(alloca(sizeof(VkDescriptorImageInfo) * m_numTextures));
-	memset(texImageInfo, 0, sizeof(VkDescriptorImageInfo) * m_numTextures);
+	VkDescriptorImageInfo *texImageInfo = static_cast<VkDescriptorImageInfo *>(alloca(sizeof(VkDescriptorImageInfo) * (m_numTextures+1)));
+	memset(texImageInfo, 0, sizeof(VkDescriptorImageInfo) * m_numTextures+1);
 
 	for (uint32_t i = 0; i < m_numTextures; i++)
 	{
-		imageInfo[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		imageInfo[i].imageView = VK_NULL_HANDLE;
-		imageInfo[i].sampler = m_textures[i]->m_vkSampler;
-
+//		imageInfo[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+//		imageInfo[i].imageView = VK_NULL_HANDLE;
+//		imageInfo[i].sampler = m_textures[i]->m_vkSampler;
+//		texImageInfo[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+//		texImageInfo[i].imageView = m_textures[i]->m_vkImageView;
+//		texImageInfo[i].sampler = VK_NULL_HANDLE;
 		texImageInfo[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		texImageInfo[i].imageView = m_textures[i]->m_vkImageView;
-		texImageInfo[i].sampler = VK_NULL_HANDLE;
+		texImageInfo[i].sampler = m_textures[i]->m_vkSampler;
 	}
-
+//	texImageInfo[2].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+//	texImageInfo[2].imageView = m_dummyTexture->m_vkImageView;
+//	texImageInfo[2].sampler = m_dummyTexture->m_vkSampler;
+/*
 	for (uint32_t i = 0; i < m_numTextures; i++)
 	{
 		uint32_t di = 2 + i;
 		writeDescriptorSet[di].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		writeDescriptorSet[di].dstSet = m_vkDescriptorSet;
 		writeDescriptorSet[di].dstBinding = 2;
-		writeDescriptorSet[di].dstArrayElement = i;
+		writeDescriptorSet[di].dstArrayElement = 0;
 		writeDescriptorSet[di].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
-		writeDescriptorSet[di].descriptorCount = 1;
-		writeDescriptorSet[di].pImageInfo = &imageInfo[i];
+		writeDescriptorSet[di].descriptorCount = 2;
+		writeDescriptorSet[di].pImageInfo = texImageInfo;
 
 		di = 2 + m_numTextures + i;
 		writeDescriptorSet[di].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -1092,10 +1049,20 @@ void RenderDevice::createDescriptorSet()
 		writeDescriptorSet[di].descriptorCount = 1;
 		writeDescriptorSet[di].pImageInfo = &texImageInfo[i];
 	}
-	vkUpdateDescriptorSets(m_vkDevice, 2+2*m_numTextures, writeDescriptorSet, 0, nullptr);
+*/
+	uint32_t di = 2;
+	writeDescriptorSet[di].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	writeDescriptorSet[di].dstSet = m_vkDescriptorSet;
+	writeDescriptorSet[di].dstBinding = 2;
+	writeDescriptorSet[di].dstArrayElement = 0;
+	writeDescriptorSet[di].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	writeDescriptorSet[di].descriptorCount = 3;
+	writeDescriptorSet[di].pImageInfo = texImageInfo;
+
+	vkUpdateDescriptorSets(m_vkDevice, 2+1, writeDescriptorSet, 0, nullptr);
 }
 
-void RenderDevice::createCommandBuffers(Mesh **meshes, uint32_t numMeshes)
+void RenderDevice::createCommandBuffers(Scene& scene)
 {
 	VkCommandBufferAllocateInfo commandBufferAllocateInfo = {};
 	commandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -1117,10 +1084,9 @@ void RenderDevice::createCommandBuffers(Mesh **meshes, uint32_t numMeshes)
 	commandBufferBeginInfo.pInheritanceInfo = nullptr;
 
 	// Note: contains value for each subresource range
-	VkClearValue clearValues[3];
+	VkClearValue clearValues[2];
 	clearValues[0].color = { 0.0f, 0.0f, 0.25f, 1.0f };  // R, G, B, A
-	clearValues[1].color = { 0.0f, 0.0f, 0.25f, 1.0f };  // R, G, B, A
-	clearValues[2].depthStencil = { 1.0f, 0 };			 // Depth / Stencil
+	clearValues[1].depthStencil = { 1.0f, 0 };			 // Depth / Stencil
 
 	VkImageSubresourceRange subResourceRange = {};
 	subResourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -1179,12 +1145,12 @@ void RenderDevice::createCommandBuffers(Mesh **meshes, uint32_t numMeshes)
 
 		vkCmdBindIndexBuffer(m_vkCommandBuffers[i], m_indexBuffer->m_buffer, 0, VK_INDEX_TYPE_UINT32);
 
-		for (uint32_t draw = 0; draw < 2; ++draw)
+		for (uint32_t draw = 0; draw < scene.m_meshInstanceCount; ++draw)
 		{
-			if (meshes[draw] != nullptr)
+			if (scene.m_instanceMeshes[draw] != nullptr)
 			{
 				vkCmdPushConstants(m_vkCommandBuffers[i], m_vkPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, 4, &draw);
-				vkCmdDrawIndexed(m_vkCommandBuffers[i], meshes[draw]->m_renderables[0].getIndexCount(), 1, meshes[draw]->m_renderables[0].getFirstIndex(), meshes[draw]->m_renderables[0].getFirstVertex(), 0);
+				vkCmdDrawIndexed(m_vkCommandBuffers[i], scene.m_instanceMeshes[draw]->m_renderables[0].getIndexCount(), 1, scene.m_instanceMeshes[draw]->m_renderables[0].getFirstIndex(), scene.m_instanceMeshes[draw]->m_renderables[0].getFirstVertex(), 0);
 			}
 		}
 
@@ -1257,6 +1223,41 @@ VkShaderModule RenderDevice::createShaderModule(ScopeStack& scope,  const char *
 	createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 	createInfo.codeSize = file.m_sizeInBytes;
 	createInfo.pCode = reinterpret_cast<uint32_t *>(file.m_buffer);
+
+#if 0
+	{
+		SpvReflectShaderModule module;
+		SpvReflectResult result = spvReflectCreateShaderModule(createInfo.codeSize, createInfo.pCode, &module);
+		AssertMsg((result == SPV_REFLECT_RESULT_SUCCESS), "Failed to create SPIRV-Reflect Module.\n");
+
+		// Enumerate and extract shader's input variables
+/*
+		uint32_t inputVariableCount = 0;
+		result = spvReflectEnumerateInputVariables(&module, &inputVariableCount, NULL);
+		assert(result == SPV_REFLECT_RESULT_SUCCESS);
+		SpvReflectInterfaceVariable* inputVariables = (SpvReflectInterfaceVariable*)scope.allocate(inputVariableCount * sizeof(SpvReflectInterfaceVariable));
+		result = spvReflectEnumerateInputVariables(&module, &inputVariableCount, inputVariables);
+		assert(result == SPV_REFLECT_RESULT_SUCCESS);
+
+		uint32_t outputVariableCount = 0;
+		result = spvReflectEnumerateOutputVariables(&module, &outputVariableCount, NULL);
+		assert(result == SPV_REFLECT_RESULT_SUCCESS);
+		SpvReflectInterfaceVariable* outputVariables = (SpvReflectInterfaceVariable*)scope.allocate(outputVariableCount * sizeof(SpvReflectInterfaceVariable));
+		result = spvReflectEnumerateOutputVariables(&module, &outputVariableCount, outputVariables);
+		assert(result == SPV_REFLECT_RESULT_SUCCESS);
+*/
+		uint32_t descriptorBindingCount = 0;
+		spvReflectEnumerateDescriptorSets(&module, &descriptorBindingCount, NULL);
+		SpvReflectDescriptorSet* descriptorBindings = (SpvReflectDescriptorSet*)scope.allocate(descriptorBindingCount * sizeof(SpvReflectDescriptorSet));
+		result = spvReflectEnumerateDescriptorSets(&module, &descriptorBindingCount, &descriptorBindings);
+
+		// Output variables, descriptor bindings, descriptor sets, and push constants
+		// can be enumerated and extracted using a similar mechanism.
+
+		// Destroy the reflection data when no longer required.
+		spvReflectDestroyShaderModule(&module);
+	}
+#endif
 
 	VkShaderModule shaderModule;
 	if (vkCreateShaderModule(m_vkDevice, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)

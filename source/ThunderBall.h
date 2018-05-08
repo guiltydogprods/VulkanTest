@@ -2,6 +2,7 @@
 
 struct RenderDevice;
 struct Mesh;
+struct Scene;
 
 class ThunderBallApp : public Application
 {
@@ -16,4 +17,7 @@ public:
 protected:
 	Mesh **m_meshes;
 	uint32_t m_numMeshes;
+	Scene *m_scene;
+	glm::vec3 *m_rotationAxis;
+	glm::vec3 *m_positions;
 };

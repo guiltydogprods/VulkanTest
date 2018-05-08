@@ -30,8 +30,9 @@ layout (std430, binding = 2) readonly buffer MATERIALS
 };
 */
 
-layout(binding = 2) uniform sampler texSampler[2];
-layout(binding = 3) uniform texture2D textures[2];
+//layout(binding = 2) uniform sampler texSampler[2];
+//layout(binding = 3) uniform texture2D textures[2];
+layout(binding = 2) uniform sampler2D textures[3];
  
 layout (push_constant) uniform pushConstants_t
 {
@@ -40,8 +41,8 @@ layout (push_constant) uniform pushConstants_t
 
 void main(void)
 {
-//	vec3 Kd = materials[fs_in.material_id].texture_id >= 0 ? materials[fs_in.material_id].diffuse.xyz * texture(textures[materials[fs_in.material_id].texture_id], fs_in.tex_coord).xyz : materials[fs_in.material_id].diffuse.xyz;
-	vec3 Kd = texture(sampler2D(textures[drawId], texSampler[drawId]), fs_in.tex_coord).xyz;
+//	vec3 Kd = texture(sampler2D(textures[drawId], texSampler[drawId]), fs_in.tex_coord).xyz;
+	vec3 Kd = texture(textures[drawId], fs_in.tex_coord).xyz;
 
 	vec3 Ks = vec3(1, 1, 1);	//materials[fs_in.material_id].specular;
 	float m = 64.0;				//materials[fs_in.material_id].specularPower;
