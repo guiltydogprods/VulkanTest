@@ -110,6 +110,8 @@ public:
 	template <typename T>
 	T* newPOD()
 	{
+		const char *typeName = typeid(T).name();
+		print("Allocating: %s (%ld bytes)\n", typeName, sizeof(T));
 		return new (m_alloc.allocate(sizeof(T))) T;
 	}
 

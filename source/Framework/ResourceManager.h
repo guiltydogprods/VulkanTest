@@ -6,7 +6,7 @@
 struct Mesh;
 struct Texture;
 
-enum ResourceType : uint32_t
+enum ResourceType : uint16_t
 {
 	kRTNone = 0,
 	kRTMesh,
@@ -18,6 +18,40 @@ struct ResourceName
 	const char		*resourceFilename;
 	ResourceType	resourceType;
 };
+
+struct ResourceFilename
+{
+	ResourceFilename(ScopeStack& scope, const char *resourceFilename)
+		: filenameLength(static_cast<uint16_t>(strlen(resourceFilename)))
+	{
+		size_t size = sizeof(filename);
+		if (filenameLength > sizeof(filename)-1)
+		{
+			AssertMsg(false, "More space needs to be allocated.\n");
+		}
+		memcpy(filename, resourceFilename, filenameLength);
+		filename[filenameLength] = 0;
+	}
+
+	ResourceFilename()
+		: filenameLength(0) {}
+
+	uint16_t filenameLength;				//2 bytes
+	char filename[60];						//60 bytes - if filename is longer than 59 + 1 characters, allocate the remaining bytes immediately afterwards.
+};											//62 bytes total
+
+struct ResourceEntry
+{
+	ResourceEntry(ScopeStack& scope, const char *_resourceFilename, ResourceType _type)
+		: resourceType(_type)
+		, resourceFilename(scope, _resourceFilename) {}
+
+	ResourceEntry()
+		: resourceType(kRTNone) {}
+
+	ResourceType		resourceType;		//2 bytes
+	ResourceFilename	resourceFilename;	//62 bytes
+};											//64 bytes total
 
 struct ResourceInfo
 {
@@ -57,20 +91,30 @@ struct ResourceManager
 {
 	template<size_t N>
 	ResourceManager(ScopeStack& scope, RenderDevice& renderDevice, ResourceName(&resources)[N])
-		: m_meshes(nullptr)
+		: m_resourceList(nullptr)
+		, m_meshes(nullptr)
 		, m_textures(nullptr)
+		, m_resourceCount(0)
 		, m_numMeshes(0)
 		, m_numTextures(0)
 	{
+		for (size_t i = 0; i < N; ++i)
+		{
+			registerResource(scope, resources[i]);
+		}
+// I'll keep this in for now, so that the game still runs.
 		registerResources(scope, renderDevice, N, &resources[0]);
 	}
 
 	~ResourceManager() {}
 
-	void registerResources(ScopeStack&scope, RenderDevice& renderDevice, uint32_t numResources, ResourceName *resources);
+	void registerResource(ScopeStack& scope, ResourceName& resource);
+	void registerResources(ScopeStack& scope, RenderDevice& renderDevice, uint32_t numResources, ResourceName *resources);
 
+	ResourceEntry		*m_resourceList;
 	Mesh				**m_meshes;
 	Texture				**m_textures;
+	uint32_t			m_resourceCount;
 	uint32_t			m_numMeshes;
 	uint32_t			m_numTextures;
 };

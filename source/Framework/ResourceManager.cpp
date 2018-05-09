@@ -48,3 +48,13 @@ void ResourceManager::registerResources(ScopeStack&scope, RenderDevice& renderDe
 		}
 	}
 }
+
+void ResourceManager::registerResource(ScopeStack& scope, ResourceName& resource)
+{
+	void *addr = scope.newPOD<ResourceEntry>();
+	ResourceEntry *entry = new (addr) ResourceEntry(scope, resource.resourceFilename, resource.resourceType);
+	if (m_resourceCount++ == 0)
+		m_resourceList = entry;
+}
+
+
