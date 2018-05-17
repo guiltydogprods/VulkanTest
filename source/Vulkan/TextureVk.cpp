@@ -9,7 +9,10 @@ Texture::Texture(ScopeStack& scope, RenderDevice& renderDevice, const char *file
 	, m_vkImageView(nullptr)
 	, m_memAllocInfo{_dummyMemAllocInfo}
 {
-	File file(filename);
+	char modifiedFilename[1024];
+	strcpy_s(modifiedFilename, sizeof(modifiedFilename), filename);
+	strncpy(modifiedFilename + (strlen(filename) - 3), "dds", 3);
+	File file(modifiedFilename);
 
 	uint8_t buffer[sizeof(DDS_HEADER) + 4];
 	size_t bytesRead = file.readBytes(sizeof(buffer), buffer);

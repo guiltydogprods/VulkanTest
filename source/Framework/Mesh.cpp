@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "File.h"
 #include "Mesh.h"
+#include "ResourceManager.h"
 #include "../Vulkan/BufferVk.h"
 #include "../Vulkan/RenderDeviceVk.h"
 
@@ -175,6 +176,65 @@ uint8_t* Mesh::processMeshRecursive(uint8_t* ptr, uint32_t& renderableIndex, uin
 		ptr = processMeshRecursive(ptr, renderableIndex, nodeIndex, parentIndex, renderDevice, vertexBufferOffset, indexBufferOffset);
 	}
 	return ptr;
+}
+
+void Mesh::RegisterSubresources(ScopeStack& scopeStack, ResourceManager& resourceManager, const char *filename)
+{
+	File file(filename);
+
+	ModelHeader header = {};
+	file.readBytes(sizeof(ModelHeader), &header);
+
+	bool bLoaded = false;
+	while (!bLoaded)
+	{
+		ChunkId chunk = {};
+		size_t bytesRead = file.readBytes(sizeof(ChunkId), &chunk);
+		AssertMsg((bytesRead == sizeof(ChunkId)), "File read failure.\n");
+		if (!strncmp(chunk.tag, "TEXT", 4))
+		{
+			RegisterTextures(scopeStack, resourceManager, file);
+		}
+		else if (!strncmp(chunk.tag, "MATL", 4))
+		{
+			//			LoadMaterialChunk(chunk);
+			file.skipBytes(chunk.size - sizeof(ChunkId));
+		}
+		else if (!strncmp(chunk.tag, "MESH", 4))
+		{
+			file.skipBytes(chunk.size - sizeof(ChunkId));
+			bLoaded = true;
+		}
+		else
+		{
+			AssertMsg(false, "Invalid Chunk");
+		}
+	}
+}
+
+void Mesh::RegisterTextures(ScopeStack& scopeStack, ResourceManager& resourceManager, File& file)
+{
+	TextureChunk textureChunk;
+	file.rewindBytes(sizeof(ChunkId));
+	size_t bytesRead = file.readBytes(sizeof(textureChunk), &textureChunk);
+	AssertMsg((bytesRead == sizeof(textureChunk)), "File read failure.\n");
+
+	uint32_t numTextures = textureChunk.numTextures;
+	for (uint32_t i = 0; i < numTextures; ++i)
+	{
+		uint32_t len = 0;
+		file.readBytes(sizeof(len), &len);
+		char strBuffer[1024];
+		size_t bytesRead = file.readBytes(len, strBuffer);
+		strBuffer[len] = '\0';
+		std::string filename(strBuffer);
+		ResourceName resource;
+		resource.resourceFilename = strBuffer;
+		resource.resourceType = kRTTexture;
+		resourceManager.registerResource(scopeStack, resource);
+		uint32_t alignedLen = len + 4 & ~(4 - 1);						//4 bytes length + string length + padding to 4 bytes
+		file.skipBytes(alignedLen - len);
+	}
 }
 
 Renderable::Renderable(uint32_t firstVertex, uint32_t firstIndex, uint32_t indexCount, uint32_t materialIndex)

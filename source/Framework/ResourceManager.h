@@ -102,14 +102,14 @@ struct ResourceManager
 		{
 			registerResource(scope, resources[i]);
 		}
-// I'll keep this in for now, so that the game still runs.
-		registerResources(scope, renderDevice, N, &resources[0]);
+		loadResources(scope, renderDevice);
 	}
 
 	~ResourceManager() {}
 
 	void registerResource(ScopeStack& scope, ResourceName& resource);
 	void registerResources(ScopeStack& scope, RenderDevice& renderDevice, uint32_t numResources, ResourceName *resources);
+	void loadResources(ScopeStack&scope, RenderDevice& renderDevice);
 
 	ResourceEntry		*m_resourceList;
 	Mesh				**m_meshes;

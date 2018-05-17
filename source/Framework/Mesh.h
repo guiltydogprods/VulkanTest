@@ -106,6 +106,7 @@ struct Renderable
 };
 
 struct Buffer;
+struct ResourceManager;
 
 struct Mesh
 {
@@ -115,6 +116,8 @@ struct Mesh
 	void		processMeshChunk(ScopeStack& scopeStack, File& file, RenderDevice& renderDevice, int64_t& vertexBufferOffset, int64_t& indexBufferOffset);
 	uint8_t*	processMeshRecursive(uint8_t *ptr, uint32_t& renderableIndex, uint32_t& nodeIndex, int32_t parentIndex, RenderDevice& renderDevice, int64_t& vertexBufferOffset, int64_t& indexBufferOffset);
 
+	static void	RegisterSubresources(ScopeStack& scopeStack, ResourceManager& resourceManager, const char *filename);
+	static void RegisterTextures(ScopeStack& scopeStack, ResourceManager& resourceManager, File& file);
 
 	MeshNode	*m_hierarchy;
 	glm::mat4x4	*m_transforms;
