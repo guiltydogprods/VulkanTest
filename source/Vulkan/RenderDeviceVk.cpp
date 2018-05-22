@@ -513,6 +513,27 @@ void RenderDevice::createVertexFormat(ScopeStack& scope)
 	m_vkVertexAttributeDescriptions[2].location = 2;
 	m_vkVertexAttributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
 	m_vkVertexAttributeDescriptions[2].offset = sizeof(float) * 6;
+/*
+	m_vkVertexAttributeDescriptions[1].binding = 0;
+	m_vkVertexAttributeDescriptions[1].location = 1;
+	m_vkVertexAttributeDescriptions[1].format = VK_FORMAT_A2R10G10B10_SNORM_PACK32;
+	m_vkVertexAttributeDescriptions[1].offset = 12;
+
+	m_vkVertexAttributeDescriptions[2].binding = 0;
+	m_vkVertexAttributeDescriptions[2].location = 2;
+	m_vkVertexAttributeDescriptions[2].format = VK_FORMAT_A2R10G10B10_SNORM_PACK32;
+	m_vkVertexAttributeDescriptions[2].offset = 16;
+
+	m_vkVertexAttributeDescriptions[3].binding = 0;
+	m_vkVertexAttributeDescriptions[3].location = 3;
+	m_vkVertexAttributeDescriptions[3].format = VK_FORMAT_A2R10G10B10_SNORM_PACK32;
+	m_vkVertexAttributeDescriptions[3].offset = 20;
+
+	m_vkVertexAttributeDescriptions[4].binding = 0;
+	m_vkVertexAttributeDescriptions[4].location = 4;
+	m_vkVertexAttributeDescriptions[4].format = VK_FORMAT_R32G32_SFLOAT;
+	m_vkVertexAttributeDescriptions[4].offset = 24;
+*/
 }
 
 void RenderDevice::createSwapChain(ScopeStack& scope)

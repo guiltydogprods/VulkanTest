@@ -37,9 +37,14 @@ void ThunderBallApp::initialize(ScopeStack& scope, RenderDevice& renderDevice)
 
 	ResourceName resources[] =
 	{
-		{ "Sphere.s3d",	kRTMesh		},
-		{ "Donut2.s3d",	kRTMesh		},
-		{ "box.s3d",	kRTMesh		},
+		{ "box.s3d",	kRTMesh	},
+		{ "Sphere.s3d",	kRTMesh	},
+		{ "Donut2.s3d",	kRTMesh },
+//		{ "Donut2.s3d",	kRTMesh },
+//		{ "Donut2.s3d",	kRTMesh },
+//		{ "torus.s3d",	kRTMesh },
+//		{ "torus.s3d",	kRTMesh },
+//		{ "torus.s3d",	kRTMesh },
 	};
 
 	ResourceManager *resourceManager = scope.newObject<ResourceManager>(scope, renderDevice, resources);
@@ -56,16 +61,16 @@ void ThunderBallApp::initialize(ScopeStack& scope, RenderDevice& renderDevice)
 
 	glm::vec3 axis[kNumMeshInstances] =
 	{
+		{ 1.0f, 0.0f, 0.0f },
 		{ 0.707f, 0.0f, 0.707f },
 		{ -0.707f, 0.0f, -0.707f },
-		{ 1.0f, 0.0f, 0.0f },
 	};
 
 	glm::vec3 positions[kNumMeshInstances] = 
 	{
+		{ 0.0f,  0.0f, 0.0f },
 		{ -1.0f, 0.0f, 0.0f },
 		{  1.0f, 0.0f, 0.0f },
-		{  0.0f,  0.0f, 0.0f },
 	};
 
 	m_rotationAxis = static_cast<glm::vec3 *>(scope.allocate(sizeof(glm::vec3) * numMeshes));
