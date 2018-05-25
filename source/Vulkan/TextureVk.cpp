@@ -11,7 +11,7 @@ Texture::Texture(ScopeStack& scope, RenderDevice& renderDevice, const char *file
 {
 	char modifiedFilename[1024];
 	strcpy_s(modifiedFilename, sizeof(modifiedFilename), filename);
-	strncpy_s(modifiedFilename + (strlen(filename) - 3), sizeof(modifiedFilename), "dds", 3);
+	strncpy_s(modifiedFilename + (strlen(filename) - 3), sizeof(modifiedFilename)-(strlen(filename) - 3), "dds", 3);
 	File file(modifiedFilename);
 
 	uint8_t buffer[sizeof(DDS_HEADER) + 4];
