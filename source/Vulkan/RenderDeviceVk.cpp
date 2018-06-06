@@ -1031,8 +1031,9 @@ void RenderDevice::createDescriptorSet(Scene& scene)
 //	VkDescriptorImageInfo *imageInfo = static_cast<VkDescriptorImageInfo *>(alloca(sizeof(VkDescriptorImageInfo) * m_numTextures));
 //	memset(imageInfo, 0, sizeof(VkDescriptorImageInfo) * m_numTextures);
 
-	VkDescriptorImageInfo *texImageInfo = static_cast<VkDescriptorImageInfo *>(alloca(sizeof(VkDescriptorImageInfo) * (m_numTextures+1)));
-	memset(texImageInfo, 0, sizeof(VkDescriptorImageInfo) * m_numTextures+1);
+	const uint32_t kShaderTextureCount = 3;
+	VkDescriptorImageInfo *texImageInfo = static_cast<VkDescriptorImageInfo *>(alloca(sizeof(VkDescriptorImageInfo) * kShaderTextureCount));
+	memset(texImageInfo, 0, sizeof(VkDescriptorImageInfo) * kShaderTextureCount);
 
 	for (uint32_t i = 0; i < m_numTextures; i++)
 	{
@@ -1045,6 +1046,13 @@ void RenderDevice::createDescriptorSet(Scene& scene)
 		texImageInfo[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		texImageInfo[i].imageView = m_textures[i]->m_vkImageView;
 		texImageInfo[i].sampler = m_textures[i]->m_vkSampler;
+	}
+
+	for (uint32_t i = m_numTextures; i < kShaderTextureCount; ++i)
+	{
+		texImageInfo[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		texImageInfo[i].imageView = m_textures[0]->m_vkImageView;
+		texImageInfo[i].sampler = m_textures[0]->m_vkSampler;
 	}
 //	texImageInfo[2].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 //	texImageInfo[2].imageView = m_dummyTexture->m_vkImageView;

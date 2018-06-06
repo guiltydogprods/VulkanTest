@@ -37,8 +37,8 @@ void ThunderBallApp::initialize(ScopeStack& scope, RenderDevice& renderDevice)
 
 	ResourceName resources[] =
 	{
-		{ "box.s3d",	kRTMesh	},
-		{ "Sphere.s3d",	kRTMesh	},
+//		{ "box.s3d",	kRTMesh	},
+//		{ "Sphere.s3d",	kRTMesh	},
 		{ "Donut2.s3d",	kRTMesh },
 //		{ "Donut2.s3d",	kRTMesh },
 //		{ "Donut2.s3d",	kRTMesh },
@@ -63,7 +63,7 @@ void ThunderBallApp::initialize(ScopeStack& scope, RenderDevice& renderDevice)
 	{
 		{ 1.0f, 0.0f, 0.0f },
 		{ 0.707f, 0.0f, 0.707f },
-		{ -0.707f, 0.0f, -0.707f },
+		{ 0.707f, 0.0f, -0.707f },
 	};
 
 	glm::vec3 positions[kNumMeshInstances] = 
@@ -73,8 +73,8 @@ void ThunderBallApp::initialize(ScopeStack& scope, RenderDevice& renderDevice)
 		{  1.0f, 0.0f, 0.0f },
 	};
 
-	m_rotationAxis = static_cast<glm::vec3 *>(scope.allocate(sizeof(glm::vec3) * numMeshes));
-	m_positions = static_cast<glm::vec3 *>(scope.allocate(sizeof(glm::vec3) * numMeshes));
+	m_rotationAxis = static_cast<glm::vec3 *>(scope.allocate(sizeof(glm::vec3) * kNumMeshInstances));
+	m_positions = static_cast<glm::vec3 *>(scope.allocate(sizeof(glm::vec3) * kNumMeshInstances));
 	for (uint32_t i = 0; i < kNumMeshInstances; ++i)
 	{
 		m_rotationAxis[i] = axis[i];
@@ -87,8 +87,8 @@ void ThunderBallApp::initialize(ScopeStack& scope, RenderDevice& renderDevice)
 	glm::mat4x4 modelMatrix2 = glm::translate(m_positions[2]) * glm::rotate(glm::radians(angle), m_rotationAxis[2]);
 
 	uint32_t meshIndex0 = m_scene->addMeshInstance(meshes[0], modelMatrix0);
-	uint32_t meshIndex1 = m_scene->addMeshInstance(meshes[1], modelMatrix1);
-	uint32_t meshIndex2 = m_scene->addMeshInstance(meshes[2], modelMatrix2);
+	uint32_t meshIndex1 = m_scene->addMeshInstance(meshes[0], modelMatrix1);
+	uint32_t meshIndex2 = m_scene->addMeshInstance(meshes[0], modelMatrix2);
 }
 
 void ThunderBallApp::update(ScopeStack& scope, RenderDevice& renderDevice)
