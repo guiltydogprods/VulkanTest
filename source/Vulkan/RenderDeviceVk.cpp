@@ -497,13 +497,13 @@ void RenderDevice::createVertexFormat(ScopeStack& scope)
 	m_vkVertexBindingDescription.stride = sizeof(Vertex);
 	m_vkVertexBindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-	m_vkVertexAttributeDescriptionCount = 3;
+	m_vkVertexAttributeDescriptionCount = 5;
 	m_vkVertexAttributeDescriptions = static_cast<VkVertexInputAttributeDescription *>(scope.allocate(sizeof(VkVertexInputAttributeDescription) * m_vkVertexAttributeDescriptionCount));
 	m_vkVertexAttributeDescriptions[0].binding = 0;
 	m_vkVertexAttributeDescriptions[0].location = 0;
 	m_vkVertexAttributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
 	m_vkVertexAttributeDescriptions[0].offset = 0;
-
+/*
 	m_vkVertexAttributeDescriptions[1].binding = 0;
 	m_vkVertexAttributeDescriptions[1].location = 1;
 	m_vkVertexAttributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
@@ -513,7 +513,7 @@ void RenderDevice::createVertexFormat(ScopeStack& scope)
 	m_vkVertexAttributeDescriptions[2].location = 2;
 	m_vkVertexAttributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
 	m_vkVertexAttributeDescriptions[2].offset = sizeof(float) * 6;
-/*
+*/
 	m_vkVertexAttributeDescriptions[1].binding = 0;
 	m_vkVertexAttributeDescriptions[1].location = 1;
 	m_vkVertexAttributeDescriptions[1].format = VK_FORMAT_A2R10G10B10_SNORM_PACK32;
@@ -533,7 +533,6 @@ void RenderDevice::createVertexFormat(ScopeStack& scope)
 	m_vkVertexAttributeDescriptions[4].location = 4;
 	m_vkVertexAttributeDescriptions[4].format = VK_FORMAT_R32G32_SFLOAT;
 	m_vkVertexAttributeDescriptions[4].offset = 24;
-*/
 }
 
 void RenderDevice::createSwapChain(ScopeStack& scope)
@@ -769,7 +768,7 @@ void RenderDevice::createGraphicsPipeline(ScopeStack& scope)
 	vertexInputCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 	vertexInputCreateInfo.vertexBindingDescriptionCount = 1;
 	vertexInputCreateInfo.pVertexBindingDescriptions = &m_vkVertexBindingDescription;
-	vertexInputCreateInfo.vertexAttributeDescriptionCount = 3;
+	vertexInputCreateInfo.vertexAttributeDescriptionCount = 5;
 	vertexInputCreateInfo.pVertexAttributeDescriptions = m_vkVertexAttributeDescriptions;
 
 	VkPipelineInputAssemblyStateCreateInfo inputAssemblyCreateInfo = {};
