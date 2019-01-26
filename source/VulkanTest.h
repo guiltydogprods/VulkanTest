@@ -4,11 +4,11 @@ struct RenderDevice;
 struct Mesh;
 struct Scene;
 
-class ThunderBallApp : public Application
+class VulkanTest : public Application
 {
 public:
-	ThunderBallApp();
-	~ThunderBallApp();
+	VulkanTest();
+	~VulkanTest();
 
 	void initialize(ScopeStack& scopeStack, RenderDevice& renderDevice);
 	void update(ScopeStack& frameScope, RenderDevice& renderDevice);

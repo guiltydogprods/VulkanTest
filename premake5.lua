@@ -1,7 +1,7 @@
 -- premake5.lua
-workspace "ThunderBall"
+workspace "VulkanTest"
    configurations { "Debug", "Release" }
-   startproject "ThunderBall"
+   startproject "VulkanTest"
 
 includedirs { "." }
 
@@ -23,7 +23,7 @@ configuration "windows"
 configuration "vs*"
 --defines { "_CRT_SECURE_NO_WARNINGS" }
  
-project "ThunderBall"
+project "VulkanTest"
    location "source"
    kind "ConsoleApp"
    language "C++"

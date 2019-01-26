@@ -1,5 +1,5 @@
 #include "stdafx.h"
-#include "ThunderBall.h"
+#include "VulkanTest.h"
 #include "Framework/Mesh.h"
 #include "Framework/ResourceManager.h"
 #include "Vulkan/BufferVk.h"
@@ -7,11 +7,11 @@
 #include "Vulkan/RenderTargetVk.h"
 #include "Vulkan/SceneVk.h"
 
-ThunderBallApp s_thundeBallApp;
+VulkanTest s_vulkanTestApp;
 
-const char		*kApplicationName = "Thunder Ball";
+const char		*kApplicationName = "Vulkan Test";
 
-ThunderBallApp::ThunderBallApp()
+VulkanTest::VulkanTest()
 	: Application(kApplicationName)
 	, m_meshes(nullptr)
 	, m_numMeshes(0)
@@ -19,12 +19,12 @@ ThunderBallApp::ThunderBallApp()
 {
 }
 
-ThunderBallApp::~ThunderBallApp()
+VulkanTest::~VulkanTest()
 {
-	print("ThunderBallApp::dtor\n");
+	print("VulkanTest::dtor\n");
 }
 
-void ThunderBallApp::initialize(ScopeStack& scope, RenderDevice& renderDevice)
+void VulkanTest::initialize(ScopeStack& scope, RenderDevice& renderDevice)
 {
 	uint32_t verticesSize = 100000;
 	uint32_t indicesSize = 100000;
@@ -89,7 +89,7 @@ void ThunderBallApp::initialize(ScopeStack& scope, RenderDevice& renderDevice)
 	uint32_t meshIndex2 = m_scene->addMeshInstance(meshes[2], modelMatrix2);
 }
 
-void ThunderBallApp::update(ScopeStack& scope, RenderDevice& renderDevice)
+void VulkanTest::update(ScopeStack& scope, RenderDevice& renderDevice)
 {
 	static float angle = 0.0f;
 	float sina = 2.5f * sinf(glm::radians(angle));
@@ -140,7 +140,7 @@ void ThunderBallApp::update(ScopeStack& scope, RenderDevice& renderDevice)
 	m_scene->update(scope);
 }
 
-void ThunderBallApp::render(ScopeStack& frameScope, RenderDevice& renderDevice)
+void VulkanTest::render(ScopeStack& frameScope, RenderDevice& renderDevice)
 {
 	uint32_t backBufferIndex;
 	if (renderDevice.getBackBufferIndex(frameScope, backBufferIndex))
