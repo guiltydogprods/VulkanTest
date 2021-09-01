@@ -92,7 +92,7 @@ public:
 		Finalizer* f = allocWithFinalizer(sizeof(T));
 		// Link this finalizer onto the chain.
 		f->fn = &destructorCall<T>;
-		const char *typeName = typeid(T).name();
+		const char* typeName = "FixMe:"; // typeid(T).name();
 #ifdef MEM_DEBUG
 		f->typeName = typeName;
 #endif
